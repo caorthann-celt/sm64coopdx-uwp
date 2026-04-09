@@ -15,6 +15,9 @@ extern "C" {
 extern "C" {
 extern const BehaviorScript *sWarpBhvSpawnTable[];
 #include "engine/level_script.h"
+extern const LevelScript level_castle_grounds_entry[];
+extern const LevelScript level_castle_inside_entry[];
+extern const LevelScript level_castle_courtyard_entry[];
 }
 
 #define DYNOS_LEVEL_MOD_INDEX_VANILLA (-1)
@@ -452,9 +455,6 @@ s16 *DynOS_Level_GetWarpEntry(s32 aLevel, s32 aArea) {
 
     // override vanilla castle warps
     if (DynOS_Level_GetCourse(aLevel) == COURSE_NONE && aLevel >= 0 && aLevel < LEVEL_COUNT) {
-        extern const LevelScript level_castle_grounds_entry[];
-        extern const LevelScript level_castle_inside_entry[];
-        extern const LevelScript level_castle_courtyard_entry[];
         if (sDynosLevelScripts[aLevel].mLevelScript == level_castle_inside_entry) {
             return DynOS_Level_GetWarp(aLevel, aArea, (aArea == 3) ? 0x00 : 0x01);
         } else if (sDynosLevelScripts[aLevel].mLevelScript == level_castle_grounds_entry) {

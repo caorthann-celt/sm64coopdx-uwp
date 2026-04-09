@@ -66,7 +66,8 @@ static void djui_lobby_on_hover_end(UNUSED struct DjuiBase* base) {
 }
 
 void djui_panel_join_lobby(struct DjuiBase* caller) {
-    gCoopNetDesiredLobby = (uint64_t)caller->tag;
+    struct DjuiLobbyEntry* entry = (struct DjuiLobbyEntry*)caller;
+    gCoopNetDesiredLobby = entry->lobbyId;
     snprintf(gCoopNetPassword, 64, "%s", sPassword);
     network_reset_reconnect_and_rehost();
     network_set_system(NS_COOPNET);
@@ -95,6 +96,7 @@ void djui_panel_join_query(uint64_t aLobbyId, UNUSED uint64_t aOwnerId, uint16_t
 
     struct DjuiBase* layoutBase = &sLobbyLayout->base;
     struct DjuiLobbyEntry* entry = djui_lobby_entry_create(layoutBase, (char*)aHostName, (char*)mode, playerText, (char*)aDescription, disabled, djui_panel_join_lobby, djui_lobby_on_hover, djui_lobby_on_hover_end);
+    entry->lobbyId = aLobbyId;
     entry->base.tag = (s64)aLobbyId;
     djui_paginated_update_page_buttons(sLobbyPaginated);
 }

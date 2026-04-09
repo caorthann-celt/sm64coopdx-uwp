@@ -201,9 +201,9 @@ static const char *get_obj_name_str(enum ObjTypeFlag objFlag) {
 struct GdObj *make_object(enum ObjTypeFlag objType) {
     struct GdObj *newObj;
     struct GdObj *objListOldHead;
-    s32 objSize;
+    s32 objSize = 0;
     s32 i;
-    drawmethod_t objDrawFn;
+    drawmethod_t objDrawFn = NULL;
     const char *typeName;
     u8 *newObjBytes;
     s32 objPermanence = 0x10;

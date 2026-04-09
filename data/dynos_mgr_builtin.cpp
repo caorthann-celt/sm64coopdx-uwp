@@ -2040,10 +2040,10 @@ static const DynosBuiltinFunction sDynosBuiltinFuncs[] = {
 };
 
 static const char *sDynosBuiltinFuncTypeNames[] = {
-    [0]            = "other",
-    [FUNCTION_GEO] = "geo layout",
-    [FUNCTION_BHV] = "behavior",
-    [FUNCTION_LVL] = "level script",
+    "other",
+    "geo layout",
+    "behavior",
+    "level script",
 };
 
 const void* DynOS_Builtin_Func_GetFromName(const char* aDataName, u8 aFuncType) {

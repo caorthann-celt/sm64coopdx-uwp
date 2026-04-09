@@ -7,8 +7,13 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#if defined(UWP_BUILD)
+#include <SDL.h>
+#include <SDL_system.h>
+#else
 #include <shlobj.h>
 #include <shlwapi.h>
+#endif
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #else
@@ -19,6 +24,10 @@
 #include "fs/fs.h"
 #include "debuglog.h"
 #include "configfile.h"
+#include "thread.h"
+
+const char *sys_resource_path(void);
+const char *sys_exe_path_dir(void);
 
 /* these are not available on some platforms, so might as well */
 
@@ -62,6 +71,157 @@ const char *sys_file_name(const char *fpath) {
     if (!sep) return fpath;
     return sep + 1;
 }
+
+#if defined(_WIN32) && defined(UWP_BUILD)
+static const char *sys_uwp_local_path(void) {
+    static char localPath[SYS_MAX_PATH] = { 0 };
+    if ('\0' != localPath[0]) { return localPath; }
+
+    const char *uwpLocalPath = SDL_WinRTGetFSPathUTF8(SDL_WINRT_PATH_LOCAL_FOLDER);
+    if (uwpLocalPath == NULL || uwpLocalPath[0] == '\0') { return NULL; }
+
+    snprintf(localPath, SYS_MAX_PATH, "%s", uwpLocalPath);
+    return localPath;
+}
+
+static bool sSysUwpLocalPrepared = false;
+static bool sSysUwpUseExternalStorage = false;
+static bool sSysUwpSeedStarted = false;
+static struct ThreadHandle sSysUwpSeedThread = { 0 };
+static char sSysUwpActiveRoot[SYS_MAX_PATH] = { 0 };
+
+static void sys_uwp_ensure_dir(const char *path) {
+    if (path == NULL || path[0] == '\0') { return; }
+    CreateDirectoryA(path, NULL);
+}
+
+static bool sys_uwp_copy_file(const char *srcPath, const char *dstPath) {
+    if (!fs_sys_file_exists(srcPath) || fs_sys_file_exists(dstPath)) {
+        return true;
+    }
+
+    return CopyFileA(srcPath, dstPath, TRUE) != 0;
+}
+
+static bool sys_uwp_copy_tree(const char *srcRoot, const char *dstRoot) {
+    char searchPath[SYS_MAX_PATH] = { 0 };
+    char srcPath[SYS_MAX_PATH] = { 0 };
+    char dstPath[SYS_MAX_PATH] = { 0 };
+
+    if (!fs_sys_dir_exists(srcRoot)) { return true; }
+
+    sys_uwp_ensure_dir(dstRoot);
+
+    if (snprintf(searchPath, sizeof(searchPath), "%s\\*", srcRoot) <= 0) {
+        return false;
+    }
+
+    WIN32_FIND_DATAA findData;
+    HANDLE findHandle = FindFirstFileA(searchPath, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    do {
+        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) {
+            continue;
+        }
+
+        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", srcRoot, findData.cFileName) <= 0) {
+            FindClose(findHandle);
+            return false;
+        }
+
+        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", dstRoot, findData.cFileName) <= 0) {
+            FindClose(findHandle);
+            return false;
+        }
+
+        if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+            if (!sys_uwp_copy_tree(srcPath, dstPath)) {
+                FindClose(findHandle);
+                return false;
+            }
+        } else if (!sys_uwp_copy_file(srcPath, dstPath)) {
+            FindClose(findHandle);
+            return false;
+        }
+    } while (FindNextFileA(findHandle, &findData) != 0);
+
+    FindClose(findHandle);
+    return true;
+}
+
+static void sys_uwp_seed_storage_subdir(const char *storageRoot, const char *resourceRoot, const char *subdir) {
+    char srcPath[SYS_MAX_PATH] = { 0 };
+    char dstPath[SYS_MAX_PATH] = { 0 };
+
+    if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", resourceRoot, subdir) <= 0) { return; }
+    if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", storageRoot, subdir) <= 0) { return; }
+    if (!fs_sys_dir_exists(srcPath)) { return; }
+
+    sys_uwp_copy_tree(srcPath, dstPath);
+}
+
+static void sys_uwp_prepare_storage_root(const char *root, const char *contentRoot, bool includeTmpDir) {
+    char path[SYS_MAX_PATH] = { 0 };
+
+    sys_uwp_ensure_dir(root);
+
+    const char *baseSubdirs[] = {
+        "mods",
+        "sav",
+        "dynos",
+        "dynos\\packs",
+        "palettes",
+        "lang",
+    };
+
+    for (size_t i = 0; i < sizeof(baseSubdirs) / sizeof(baseSubdirs[0]); i++) {
+        if (snprintf(path, sizeof(path), "%s\\%s", root, baseSubdirs[i]) <= 0) { continue; }
+        sys_uwp_ensure_dir(path);
+    }
+
+    if (includeTmpDir) {
+        if (snprintf(path, sizeof(path), "%s\\%s", root, ".tmp") > 0) {
+            sys_uwp_ensure_dir(path);
+        }
+    }
+
+    if (contentRoot != NULL && contentRoot[0] != '\0') {
+        const char *contentSubdirs[] = {
+            "dynos",
+            "mods",
+            "palettes",
+            "lang",
+        };
+
+        for (size_t i = 0; i < sizeof(contentSubdirs) / sizeof(contentSubdirs[0]); i++) {
+            sys_uwp_seed_storage_subdir(root, contentRoot, contentSubdirs[i]);
+        }
+    }
+}
+
+static void sys_uwp_prepare_local_root(const char *localRoot) {
+    if (sSysUwpLocalPrepared) { return; }
+    sys_uwp_prepare_storage_root(localRoot, NULL, true);
+    sSysUwpLocalPrepared = true;
+}
+
+static void sys_uwp_prepare_external_root(const char *externalRoot) {
+    sys_uwp_prepare_storage_root(externalRoot, NULL, false);
+}
+
+static void *sys_uwp_seed_active_root_thread(void *unused) {
+    (void)unused;
+    const char *resourceRoot = sys_resource_path();
+    if (resourceRoot != NULL && resourceRoot[0] != '\0' && sSysUwpActiveRoot[0] != '\0') {
+        bool includeTmpDir = !sSysUwpUseExternalStorage;
+        sys_uwp_prepare_storage_root(sSysUwpActiveRoot, resourceRoot, includeTmpDir);
+    }
+    return NULL;
+}
+#endif
 
 void sys_swap_backslashes(char* buffer) {
     size_t length = strlen(buffer);
@@ -208,6 +368,31 @@ const char *sys_user_path(void)
     static char shortPath[SYS_MAX_PATH] = { 0 };
     if ('\0' != shortPath[0]) { return shortPath; }
 
+#if defined(UWP_BUILD)
+    const char *externalRoot = "E:\\sm64coopdx";
+    const char *romName = "baserom.us.z64";
+    char externalRom[SYS_MAX_PATH] = { 0 };
+    const char *localPath = sys_uwp_local_path();
+    if (localPath == NULL) { return NULL; }
+
+    sys_uwp_prepare_local_root(localPath);
+
+    if (snprintf(externalRom, SYS_MAX_PATH, "%s\\%s", externalRoot, romName) > 0) {
+        DWORD attrs = GetFileAttributesA(externalRom);
+        if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+            sSysUwpUseExternalStorage = true;
+            snprintf(shortPath, SYS_MAX_PATH, "%s", externalRoot);
+            snprintf(sSysUwpActiveRoot, SYS_MAX_PATH, "%s", shortPath);
+            sys_uwp_prepare_external_root(shortPath);
+            return shortPath;
+        }
+    }
+
+    sSysUwpUseExternalStorage = false;
+    snprintf(shortPath, SYS_MAX_PATH, "%s", localPath);
+    snprintf(sSysUwpActiveRoot, SYS_MAX_PATH, "%s", shortPath);
+    return shortPath;
+#else
     WCHAR widePath[SYS_MAX_PATH];
 
     // "%USERPROFILE%\AppData\Roaming"
@@ -250,6 +435,45 @@ const char *sys_user_path(void)
     }
 
     return sys_windows_short_path_from_wcs(shortPath, SYS_MAX_PATH, widePath) ? shortPath : NULL;
+#endif
+}
+
+bool sys_use_external_storage(void) {
+#if defined(_WIN32) && defined(UWP_BUILD)
+    (void)sys_user_path();
+    return sSysUwpUseExternalStorage;
+#else
+    return false;
+#endif
+}
+
+void sys_seed_active_storage_async(void) {
+#if defined(_WIN32) && defined(UWP_BUILD)
+    (void)sys_user_path();
+    if (sSysUwpSeedStarted || sSysUwpActiveRoot[0] == '\0') {
+        return;
+    }
+
+    sSysUwpSeedStarted = true;
+    if (init_thread_handle(&sSysUwpSeedThread, sys_uwp_seed_active_root_thread, NULL, NULL, 0) == 0) {
+        detach_thread(&sSysUwpSeedThread);
+        destroy_mutex(&sSysUwpSeedThread);
+    } else {
+        sys_uwp_seed_active_root_thread(NULL);
+    }
+#endif
+}
+
+const char *sys_user_path_local(void) {
+#if defined(_WIN32) && defined(UWP_BUILD)
+    const char *localPath = sys_uwp_local_path();
+    if (localPath == NULL) { return NULL; }
+
+    sys_uwp_prepare_local_root(localPath);
+    return localPath;
+#else
+    return sys_user_path();
+#endif
 }
 
 const char *sys_resource_path(void) {
@@ -262,10 +486,17 @@ const char *sys_exe_path_dir(void)
     if ('\0' != path[0]) { return path; }
 
     const char *exeFilepath = sys_exe_path_file();
+    if (exeFilepath == NULL || exeFilepath[0] == '\0') { return NULL; }
+
     char *lastSeparator = strrchr(exeFilepath, '\\');
+    char *lastForwardSeparator = strrchr(exeFilepath, '/');
+    if (lastForwardSeparator != NULL && (lastSeparator == NULL || lastForwardSeparator > lastSeparator)) {
+        lastSeparator = lastForwardSeparator;
+    }
     if (lastSeparator != NULL) {
         size_t count = (size_t)(lastSeparator - exeFilepath);
         strncpy(path, exeFilepath, count);
+        path[count] = '\0';
     }
 
     return path;
@@ -282,7 +513,11 @@ const char *sys_exe_path_file(void)
         return shortPath;
     }
 
+#if defined(UWP_BUILD)
+    return WideCharToMultiByte(CP_UTF8, 0, widePath, -1, shortPath, SYS_MAX_PATH, NULL, NULL) > 0 ? shortPath : NULL;
+#else
     return sys_windows_short_path_from_wcs(shortPath, SYS_MAX_PATH, widePath) ? shortPath : NULL;
+#endif
 }
 
 static void sys_fatal_impl(const char *msg) {

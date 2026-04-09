@@ -53,10 +53,15 @@ extern "C" {
 #define RAPI_NAME "Dummy"
 #endif
 
-#ifdef GIT_HASH
-#define TITLE ({ char title[96] = ""; snprintf(title, 96, "%s %s, [%s]", WINDOW_NAME, get_version(), GIT_HASH); title; })
+#ifdef _MSC_VER
+const char *pc_window_title(void);
+#define TITLE pc_window_title()
 #else
-#define TITLE ({ char title[96] = ""; snprintf(title, 96, "%s %s", WINDOW_NAME, get_version()); title; })
+# ifdef GIT_HASH
+# define TITLE ({ char title[96] = ""; snprintf(title, 96, "%s %s, [%s]", WINDOW_NAME, get_version(), GIT_HASH); title; })
+# else
+# define TITLE ({ char title[96] = ""; snprintf(title, 96, "%s %s", WINDOW_NAME, get_version()); title; })
+# endif
 #endif
 
 #define AT_STARTUP __attribute__((constructor))

@@ -70,6 +70,7 @@ bool fs_init(const char *writepath);
 // mounts the pack at physical path `realpath` to the root of the filesystem
 // packs mounted later take priority over packs mounted earlier
 bool fs_mount(const char *realpath);
+bool fs_mount_low_priority(const char *realpath);
 
 /* generalized filesystem functions that call matching packtype functions for each pack in the searchpath */
 

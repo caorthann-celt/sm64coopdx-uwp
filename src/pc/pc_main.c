@@ -113,6 +113,18 @@ u8 gLuaVolumeEnv = 127;
 static struct AudioAPI *audio_api;
 struct GfxWindowManagerAPI *wm_api = &WAPI;
 
+#ifdef _MSC_VER
+const char *pc_window_title(void) {
+    static char title[96] = "";
+#ifdef GIT_HASH
+    snprintf(title, sizeof(title), "%s %s, [%s]", WINDOW_NAME, get_version(), GIT_HASH);
+#else
+    snprintf(title, sizeof(title), "%s %s", WINDOW_NAME, get_version());
+#endif
+    return title;
+}
+#endif
+
 extern void gfx_run(Gfx *commands);
 extern void thread5_game_loop(void *arg);
 extern void create_next_audio_buffer(s16 *samples, u32 num_samples);
@@ -465,6 +477,7 @@ void* main_game_init(UNUSED void* dummy) {
 
     audio_init();
     sound_init();
+    sys_seed_active_storage_async();
     network_player_init();
     mumble_init();
 
@@ -480,7 +493,7 @@ int main(int argc, char *argv[]) {
     gCLIOpts.headless = true;
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UWP_BUILD)
     // handle Windows console
     if (gCLIOpts.console || gCLIOpts.headless) {
         SetConsoleOutputCP(CP_UTF8);
@@ -597,7 +610,7 @@ int main(int argc, char *argv[]) {
         gMarioStates[0].marioObj = &sHackyObject;
 
         extern void djui_panel_do_host(bool reconnecting, bool playSound);
-        djui_panel_do_host(NULL, false);
+        djui_panel_do_host(false, false);
     } else {
         network_init(NT_NONE, false);
     }

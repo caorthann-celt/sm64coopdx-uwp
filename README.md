@@ -16,3 +16,19 @@ sm64coopdx is moddable via Lua, similar to Roblox and Garry's Mod's Lua APIs. To
 
 ## Wiki
 The wiki is made using GitHub's wiki feature, you can go to the wiki tab or click [here](https://github.com/coop-deluxe/sm64coopdx/wiki).
+
+## UWP Port
+The Xbox UWP port now lives in [`ports/uwp`](ports/uwp). That directory holds the UWP host, the checked-in runtime pieces the port depends on, the vendored CoopNet source used by the UWP build, and the packaging/build files for Xbox Dev Mode.
+
+It is very much a hobby porting effort: the goal was to keep the normal game code as intact as possible, keep the UWP-specific glue in one place, and make the result understandable enough that somebody can pick it up later without needing to reverse-engineer the whole setup first.
+
+A lot of the UWP groundwork used to get this moving was inspired by Daniel Worley's UWP/OpenGL/Xbox work, especially:
+
+- [uwp-dep](https://github.com/worleydl/uwp-dep)
+- [libuwp](https://github.com/worleydl/libuwp)
+- [mesa-uwp](https://github.com/worleydl/mesa-uwp)
+- [SDL-uwp-gl](https://github.com/worleydl/SDL-uwp-gl)
+- [uwp_gl_sample](https://github.com/worleydl/uwp_gl_sample)
+- [WorleyDL's UWP porting notes](https://wiki.sternserv.xyz/docs/helpful-links/worleydls-uwp-porting-notes)
+
+If you are looking for the UWP-specific docs, build notes, and bundled dependency layout, start in [`ports/uwp/README.md`](ports/uwp/README.md).

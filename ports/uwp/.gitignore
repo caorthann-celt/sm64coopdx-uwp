@@ -1,0 +1,16 @@
+/build/
+/build-real/
+/build-*/
+/.vs/
+*.user
+*.VC.db
+*.opendb
+*.pdb
+*.ilk
+*.exe
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxsym
+*.log

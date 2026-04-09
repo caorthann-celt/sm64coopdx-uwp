@@ -40,7 +40,6 @@
 #ifdef DISCORD_SDK
 #include "pc/discord/discord.h"
 #endif
-
 // fix warnings when including rendering_graph_node
 #undef near
 #undef far

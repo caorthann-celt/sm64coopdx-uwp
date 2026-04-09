@@ -1,4 +1,5 @@
 #include <PR/ultratypes.h>
+#include <float.h>
 
 #include "sm64.h"
 #include "game/debug.h"
@@ -170,8 +171,8 @@ static s32 find_wall_collisions_from_list(struct SurfaceNode *surfaceNode,
             f32 dist = sqrtf(dX * dX + dZ * dZ);
             if (dist > radius) { continue; }
 
-            if (dist < __FLT_EPSILON__) {
-                dist = __FLT_EPSILON__;
+            if (dist < FLT_EPSILON) {
+                dist = FLT_EPSILON;
             }
 
             cNorm[0] = dX / dist;

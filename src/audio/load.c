@@ -275,11 +275,11 @@ void *dma_sample_data(uintptr_t devAddr, u32 size, s32 arg2, u8 *dmaIndexRef, s3
 void *dma_sample_data(uintptr_t devAddr, u32 size, s32 arg2, u8 *dmaIndexRef) {
 #endif
 #ifdef VERSION_SH
-    struct SharedDma *dma;
+    struct SharedDma *dma = NULL;
     s32 hasDma = FALSE;
 #else
     s32 hasDma = FALSE;
-    struct SharedDma *dma;
+    struct SharedDma *dma = NULL;
 #endif
     uintptr_t dmaDevAddr;
 #ifdef VERSION_SH

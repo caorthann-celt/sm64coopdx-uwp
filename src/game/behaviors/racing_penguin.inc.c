@@ -20,8 +20,8 @@ static void bhv_racing_penguin_the_quick_on_received_post(UNUSED u8 fromLocalInd
 
 static void bhv_racing_penguin_the_quick_on_sent_pre(void) {
     void* path = segmented_to_virtual(gBehaviorValues.trajectories.RacingPenguinTrajectory);
-    penguinPathedStartWaypoint = ((void*)o->oPathedStartWaypoint - path) / sizeof(struct Waypoint*);
-    penguinPathedPrevWaypoint  = ((void*)o->oPathedPrevWaypoint - path) / sizeof(struct Waypoint*);
+    penguinPathedStartWaypoint = ((u8*)o->oPathedStartWaypoint - (u8*)path) / sizeof(struct Waypoint*);
+    penguinPathedPrevWaypoint  = ((u8*)o->oPathedPrevWaypoint - (u8*)path) / sizeof(struct Waypoint*);
 }
 
 void bhv_racing_penguin_the_quick_override_ownership(u8* shouldOverride, u8* shouldOwn) {

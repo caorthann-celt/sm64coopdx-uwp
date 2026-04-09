@@ -41,16 +41,19 @@ static const Lights1 castle_grounds_seg7_lights_07006F68 = gdSPDefLights1(
     0x58, 0x58, 0x62, 0x28, 0x28, 0x28
 );
 
+#ifdef ENHANCE_LEVEL_TEXTURES
 // 0x07006F80 - 0x07006F98
 static const Lights1 castle_grounds_seg7_lights_07006F80 = gdSPDefLights1(
-#ifdef ENHANCE_LEVEL_TEXTURES
     0x55, 0x55, 0x55,
     0xff, 0xff, 0x0ff, 0x28, 0x28, 0x28
+);
 #else
+// 0x07006F80 - 0x07006F98
+static const Lights1 castle_grounds_seg7_lights_07006F80 = gdSPDefLights1(
     0x13, 0x57, 0x00,
     0x30, 0xdb, 0x02, 0x28, 0x28, 0x28
-#endif
 );
+#endif
 
 // 0x07006F98 - 0x07006FD8
 ROM_ASSET_LOAD_VTX(castle_grounds_seg7_vertex_07006F98, 0x0044abc0, 39442, 0x00006f98, 64);

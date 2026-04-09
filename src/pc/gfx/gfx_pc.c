@@ -763,10 +763,12 @@ static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, cons
         __m128 ob2 = _mm_set1_ps(v->ob[2]);
 
         __m128 pos = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(ob0, mat0), _mm_mul_ps(ob1, mat1)), _mm_mul_ps(ob2, mat2)), mat3);
-        float x = pos[0];
-        float y = pos[1];
-        float z = pos[2];
-        float w = pos[3];
+        float pos_values[4];
+        _mm_storeu_ps(pos_values, pos);
+        float x = pos_values[0];
+        float y = pos_values[1];
+        float z = pos_values[2];
+        float w = pos_values[3];
 #else
         float x = v->ob[0] * rsp.MP_matrix[0][0] + v->ob[1] * rsp.MP_matrix[1][0] + v->ob[2] * rsp.MP_matrix[2][0] + rsp.MP_matrix[3][0];
         float y = v->ob[0] * rsp.MP_matrix[0][1] + v->ob[1] * rsp.MP_matrix[1][1] + v->ob[2] * rsp.MP_matrix[2][1] + rsp.MP_matrix[3][1];

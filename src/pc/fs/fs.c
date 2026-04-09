@@ -10,12 +10,14 @@
 #endif
 #include <ctype.h>
 #ifdef _WIN32
+#include <windows.h>
 #include <direct.h>
 #include <fileapi.h>
 #endif
 
 #include "macros.h"
 #include "../platform.h"
+#include "../mods/mods.h"
 #include "fs.h"
 
 char fs_writepath[SYS_MAX_PATH] = "";
@@ -34,6 +36,8 @@ static fs_packtype_t *fs_packers[] = {
 };
 
 static fs_dir_t *fs_searchpaths = NULL;
+
+static bool fs_mount_internal(const char *realpath, bool highPriority);
 
 static inline fs_dir_t *fs_find_dir(const char *realpath) {
     for (fs_dir_t *dir = fs_searchpaths; dir; dir = dir->next)
@@ -57,12 +61,27 @@ bool fs_init(const char *writepath) {
         sys_fatal("Could not access the User Preferences directory.");
     }
 
+#if defined(_WIN32) && defined(UWP_BUILD)
+    const char *resourcePath = sys_resource_path();
+    if (resourcePath != NULL && resourcePath[0] != '\0' && sys_strcasecmp(resourcePath, fs_writepath) != 0) {
+        fs_mount_low_priority(resourcePath);
+    }
+#endif
+
     fs_mount(fs_writepath);
 
     return true;
 }
 
 bool fs_mount(const char *realpath) {
+    return fs_mount_internal(realpath, true);
+}
+
+bool fs_mount_low_priority(const char *realpath) {
+    return fs_mount_internal(realpath, false);
+}
+
+static bool fs_mount_internal(const char *realpath, bool highPriority) {
     if (fs_find_dir(realpath))
         return false; // already mounted
 
@@ -96,11 +115,22 @@ bool fs_mount(const char *realpath) {
     dir->pack = pack;
     dir->realpath = sys_strdup(realpath);
     dir->packer = packer;
-    dir->prev = NULL;
-    dir->next = fs_searchpaths;
-    if (fs_searchpaths)
-        fs_searchpaths->prev = dir;
-    fs_searchpaths = dir;
+    if (highPriority || fs_searchpaths == NULL) {
+        dir->prev = NULL;
+        dir->next = fs_searchpaths;
+        if (fs_searchpaths)
+            fs_searchpaths->prev = dir;
+        fs_searchpaths = dir;
+    } else {
+        fs_dir_t *tail = fs_searchpaths;
+        while (tail->next != NULL) {
+            tail = tail->next;
+        }
+
+        dir->prev = tail;
+        dir->next = NULL;
+        tail->next = dir;
+    }
 
 #ifdef DEVELOPMENT
     printf("FS: mounting '%s'\n", realpath);
@@ -244,7 +274,18 @@ void *fs_load_file(const char *vpath, uint64_t *outsize) {
 
 const char *fs_get_write_path(const char *vpath) {
     static char path[SYS_MAX_PATH];
-    if (snprintf(path, sizeof(path), "%s/%s", fs_writepath, vpath) < 0) {
+    const char *writeRoot = fs_writepath;
+
+#if defined(_WIN32) && defined(UWP_BUILD)
+    if (vpath != NULL && strcmp(vpath, TMP_DIRECTORY) == 0) {
+        const char *localRoot = sys_user_path_local();
+        if (localRoot != NULL && localRoot[0] != '\0') {
+            writeRoot = localRoot;
+        }
+    }
+#endif
+
+    if (snprintf(path, sizeof(path), "%s/%s", writeRoot, vpath) < 0) {
         return NULL;
     }
     return path;

@@ -30,7 +30,9 @@ void update_all_mario_stars(void) {
 }
 
 static void _clock_gettime(struct timespec* clock_time) {
-#if !defined _POSIX_MONOTONIC_CLOCK || _POSIX_MONOTONIC_CLOCK < 0
+#if defined(_WIN32)
+    timespec_get(clock_time, TIME_UTC);
+#elif !defined _POSIX_MONOTONIC_CLOCK || _POSIX_MONOTONIC_CLOCK < 0
     clock_gettime(CLOCK_REALTIME, clock_time);
 #elif _POSIX_MONOTONIC_CLOCK > 0
     clock_gettime(CLOCK_MONOTONIC, clock_time);
@@ -551,7 +553,8 @@ void str_seperator_concat(char *output_buffer, int buffer_size, char** strings, 
     if (num_strings <= 0) { return; }
 
     // Calculate the total length of all strings
-    int string_length[num_strings];
+    int *string_length = calloc(num_strings, sizeof(int));
+    if (string_length == NULL) { return; }
     int total_length = 0;
     for (int i = 0; i < num_strings; i++) {
         string_length[i] = strlen(strings[i]);
@@ -593,6 +596,8 @@ void str_seperator_concat(char *output_buffer, int buffer_size, char** strings, 
             buffer_index += seperator_length;
         }
     }
+
+    free(string_length);
 }
 
 char *str_remove_color_codes(const char *str) {

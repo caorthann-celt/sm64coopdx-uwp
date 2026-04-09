@@ -1006,8 +1006,8 @@ void note_pool_fill(struct NotePool *pool, s32 count) {
     s32 i;
     s32 j;
     struct Note *note;
-    struct AudioListItem *source;
-    struct AudioListItem *dest;
+        struct AudioListItem *source = NULL;
+        struct AudioListItem *dest = NULL;
 
     note_pool_clear(pool);
 
@@ -1037,6 +1037,10 @@ void note_pool_fill(struct NotePool *pool, s32 count) {
                 source = &gNoteFreeLists.active;
                 dest = &pool->active;
                 break;
+        }
+
+        if (source == NULL || dest == NULL) {
+            continue;
         }
 
         while (j < count) {

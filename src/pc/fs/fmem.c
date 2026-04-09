@@ -94,7 +94,7 @@ size_t f_read(void *dst, size_t size, size_t count, FILE *f) {
     if (!file) return fread(dst, size, count, f);
     if (file->pos >= file->size) return 0;
     count = min(count, ((file->size - file->pos) / size));
-    memcpy(dst, file->data + file->pos, count * size);
+    memcpy(dst, (u8 *)file->data + file->pos, count * size);
     file->pos += count * size;
     return count;
 }
@@ -116,7 +116,7 @@ size_t f_write(const void *str, size_t size, size_t count, FILE *f) {
         file->data = buffer;
         file->size = newsize;
     }
-    memcpy(file->data + file->pos, str, size * count);
+    memcpy((u8 *)file->data + file->pos, str, size * count);
     file->pos += size * count;
     return count;
 }

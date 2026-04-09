@@ -25,6 +25,8 @@
 # include <SDL2/SDL.h>
 # ifdef USE_GLES
 #  include <SDL2/SDL_opengles2.h>
+# elif defined(UWP_BUILD)
+#  include <glad/glad.h>
 # else
 #  include <SDL2/SDL_opengl.h>
 # endif
@@ -687,6 +689,12 @@ static inline bool gl_get_version(int *major, int *minor, bool *is_es) {
 }
 
 static void gfx_opengl_init(void) {
+#if defined(UWP_BUILD)
+    if (!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress)) {
+        sys_fatal("could not init GLAD");
+    }
+#endif
+
 #if FOR_WINDOWS || defined(OSX_BUILD)
     GLenum err;
     if ((err = glewInit()) != GLEW_OK)

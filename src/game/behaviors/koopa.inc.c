@@ -79,8 +79,8 @@ static void bhv_koopa_the_quick_on_sent_pre(void) {
     void* path = (o->oKoopaTheQuickRaceIndex == 0)
                ? (void*) gBehaviorValues.trajectories.KoopaBobTrajectory
                : (void*) gBehaviorValues.trajectories.KoopaThiTrajectory;
-    koopaPathedStartWaypoint = ((void*)o->oPathedStartWaypoint - path) / sizeof(struct Waypoint*);
-    koopaPathedPrevWaypoint  = ((void*)o->oPathedPrevWaypoint  - path) / sizeof(struct Waypoint*);
+    koopaPathedStartWaypoint = ((u8*)o->oPathedStartWaypoint - (u8*)path) / sizeof(struct Waypoint*);
+    koopaPathedPrevWaypoint  = ((u8*)o->oPathedPrevWaypoint  - (u8*)path) / sizeof(struct Waypoint*);
     koopaShotFromCannon = gMarioShotFromCannon;
 }
 

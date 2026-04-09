@@ -20,7 +20,10 @@ bool sys_windows_short_path_from_wcs(char *destPath, size_t destSize, const wcha
 bool sys_windows_short_path_from_mbs(char* destPath, size_t destSize, const char *mbsLongPath);
 #endif
 const char *sys_user_path(void);
+const char *sys_user_path_local(void);
 const char *sys_resource_path(void);
+bool sys_use_external_storage(void);
+void sys_seed_active_storage_async(void);
 const char *sys_exe_path_dir(void);
 const char *sys_exe_path_file(void);
 const char *sys_file_extension(const char *fpath);

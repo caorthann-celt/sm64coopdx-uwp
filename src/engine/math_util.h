@@ -122,6 +122,9 @@ s16 atan2s(f32 y, f32 x);
 /* |description|
 Computes the arctangent of a/b and returns it as a floating-point angle in radians. This is the floating-point equivalent of `atan2s`, allowing more precise angle calculations
 |descriptionEnd| */
+#ifdef _MSC_VER
+#define atan2f sm64_atan2f
+#endif
 f32 atan2f(f32 a, f32 b);
 
 /* |description|

@@ -15,6 +15,7 @@
 #include "pc/network/network.h"
 #include "pc/lua/utils/smlua_level_utils.h"
 #include "pc/utils/misc.h"
+#include <stdlib.h>
 
 #ifndef bcopy
 #define bcopy(b1,b2,len) (memmove((b2), (b1), (len)), (void) 0)
@@ -200,10 +201,14 @@ static inline s32 write_eeprom_savefile(const u32 file, const u32 slot, const u3
     return write_eeprom_data(&gSaveBuffer.files[file][slot], num * sizeof(struct SaveFile), ofs);
 #else
     // byteswap the data and then write it
-    struct SaveFile sf[num];
-    bcopy(&gSaveBuffer.files[file][slot], sf, num * sizeof(sf[0]));
+    const size_t size = (size_t) num * sizeof(struct SaveFile);
+    struct SaveFile *sf = malloc(size);
+    if (sf == NULL) { return 1; }
+    bcopy(&gSaveBuffer.files[file][slot], sf, size);
     for (u32 i = 0; i < num; ++i) bswap_savefile(&sf[i]);
-    return write_eeprom_data(&sf, sizeof(sf), ofs);
+    const s32 status = write_eeprom_data(sf, (s32) size, ofs);
+    free(sf);
+    return status;
 #endif
 }
 
@@ -216,10 +221,14 @@ static inline s32 write_eeprom_menudata(const u32 slot, const u32 num) {
     return write_eeprom_data(&gSaveBuffer.menuData[slot], num * sizeof(struct MainMenuSaveData), ofs);
 #else
     // byteswap the data and then write it
-    struct MainMenuSaveData md[num];
-    bcopy(&gSaveBuffer.menuData[slot], md, num * sizeof(md[0]));
+    const size_t size = (size_t) num * sizeof(struct MainMenuSaveData);
+    struct MainMenuSaveData *md = malloc(size);
+    if (md == NULL) { return 1; }
+    bcopy(&gSaveBuffer.menuData[slot], md, size);
     for (u32 i = 0; i < num; ++i) bswap_menudata(&md[i]);
-    return write_eeprom_data(&md, sizeof(md), ofs);
+    const s32 status = write_eeprom_data(md, (s32) size, ofs);
+    free(md);
+    return status;
 #endif
 }
 

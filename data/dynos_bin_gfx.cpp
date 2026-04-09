@@ -1,5 +1,6 @@
 #include "dynos.cpp.h"
 #include <map>
+#include <vector>
 extern "C" {
 #include <assert.h>
 #include "sm64.h"
@@ -29,6 +30,14 @@ extern "C" {
 )
 
 typedef char GfxParamType;
+
+#ifdef _MSC_VER
+#define DYNOS_GFX_PARAM_TYPES(...) __VA_ARGS__ __VA_OPT__(,) 0
+#define DYNOS_GFX_PARAM_TYPE_COUNT(params) ((params) + 1)
+#else
+#define DYNOS_GFX_PARAM_TYPES(...) __VA_ARGS__
+#define DYNOS_GFX_PARAM_TYPE_COUNT(params) (params)
+#endif
 
 static std::map<std::string, std::pair<Gfx *, u32>> sGfxCommandCache;
 static char *sGfxCommandErrorMsg = NULL;
@@ -775,10 +784,11 @@ static void ParseGfxSymbol(GfxData* aGfxData, DataNode<Gfx>* aNode, Gfx*& aHead,
     // Uses macro iterators to dynamically handle the correct number of parameters
 #define HANDLE_PARAM(paramNum) s64 _Arg##paramNum = ParseGfxSymbolArg(aGfxData, aNode, &aTokenIndex, "", paramTypes[paramNum - 1]);
 #define GET_ARG(paramNum) _Arg##paramNum
-#define CALL_SYMB(symb, ...) symb(__VA_ARGS__)
+#define CALL_SYMB(symb, ...) CALL_SYMB_IMPL(symb, __VA_ARGS__)
+#define CALL_SYMB_IMPL(symb, ...) symb(__VA_ARGS__)
 #define define_gfx_symbol(symb, params, addPtr, ...)                \
 if (_Symbol == #symb) {                                             \
-    static const GfxParamType paramTypes[] = { __VA_ARGS__ };       \
+    static const GfxParamType paramTypes[] = { DYNOS_GFX_PARAM_TYPES(__VA_ARGS__) }; \
     REPEAT(HANDLE_PARAM, params);                                   \
     if (addPtr) { aGfxData->mPointerList.Add(aHead); }              \
     Gfx _Gfx[] = { CALL_SYMB(symb, LIST_ARGS(GET_ARG, params)) };   \
@@ -791,6 +801,7 @@ if (_Symbol == #symb) {                                             \
 #undef HANDLE_PARAM
 #undef GET_ARG
 #undef CALL_SYMB
+#undef CALL_SYMB_IMPL
 #undef define_gfx_symbol
 #undef define_gfx_symbol_manual
 
@@ -1260,9 +1271,9 @@ static const struct GfxParamInfo *GetGfxParamInfo(const char *command) {
     if (symbol == NULL) { return NULL; }
 #define define_gfx_symbol(symb, params, addPtr, ...) \
 { \
-    static const GfxParamType types_##symb[] = { __VA_ARGS__ };                                             \
+    static const GfxParamType types_##symb[] = { DYNOS_GFX_PARAM_TYPES(__VA_ARGS__) };                      \
     static struct GfxParamInfo info_##symb = { .count = params, .types = types_##symb };                    \
-    static_assert(sizeof(types_##symb) == params, "Parameter count does not match for gfx symbol: " #symb); \
+    static_assert(sizeof(types_##symb) == DYNOS_GFX_PARAM_TYPE_COUNT(params), "Parameter count does not match for gfx symbol: " #symb); \
     if (symbolLength == sizeof(#symb) - 1 && !memcmp(symbol, #symb, symbolLength)) { return &info_##symb; } \
 }
 #define define_gfx_symbol_manual(...) define_gfx_symbol(__VA_ARGS__)
@@ -1278,8 +1289,7 @@ static std::string ResolveGfxCommand(lua_State *L, GfxData *aGfxData, const char
 
     // Count parameters
     // Find the position of each % to retrieve the correct expected type from the command paramInfo
-    u8 paramPos[paramInfo->count];
-    memset(paramPos, 0, sizeof(u8) * paramInfo->count);
+    std::vector<u8> paramPos(paramInfo->count, 0);
     u8 paramPosIndex = 0;
     u8 paramCount = 1;
     bool inBrackets = false;

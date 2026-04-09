@@ -1,6 +1,6 @@
 // bowser_bomb.c.inc
 
-static u32 networkBowserBombHit = 0;
+static s32 networkBowserBombHit = 0;
 
 static void bhv_bowser_bomb_hit_player(void) {
     if (networkBowserBombHit == 0) {
@@ -16,7 +16,7 @@ static void bhv_bowser_bomb_hit_player(void) {
 
 static void bhv_bowser_bomb_interacted(void) {
     if (networkBowserBombHit == 0) {
-        networkBowserBombHit = -o->oSyncID;
+        networkBowserBombHit = -(s32)o->oSyncID;
         network_send_object(o);
     }
     networkBowserBombHit = 0;
@@ -44,7 +44,7 @@ void bhv_bowser_bomb_loop(void) {
         bhv_bowser_bomb_hit_player();
     }
 
-    if (networkBowserBombHit == -o->oSyncID || o->oInteractStatus & INT_STATUS_HIT_MINE) {
+    if (networkBowserBombHit == -(s32)o->oSyncID || o->oInteractStatus & INT_STATUS_HIT_MINE) {
         bhv_bowser_bomb_interacted();
     }
 

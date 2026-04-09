@@ -604,7 +604,7 @@ static char *integer_name_to_string(DynObjName name) {
  * @returns pointer to created object
  */
 struct GdObj *d_makeobj(enum DObjTypes type, DynObjName name) {
-    struct GdObj *dobj;
+    struct GdObj *dobj = NULL;
     UNUSED struct ObjGroup *dgroup;
 
     switch (type) {
@@ -720,7 +720,7 @@ void d_attach(DynObjName name) {
  */
 void d_attach_to(s32 flag, struct GdObj *obj) {
     UNUSED u32 pad4C;
-    struct ObjGroup *attgrp;
+    struct ObjGroup *attgrp = NULL;
     UNUSED u32 pad[2];
     UNUSED struct DynObjInfo *curInfo = sDynListCurInfo;
     struct GdVec3f currObjPos; // transformed into attach offset

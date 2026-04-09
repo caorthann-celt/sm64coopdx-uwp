@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "src/pc/lua/smlua.h"
+#include "src/pc/lua/smlua_autogen.h"
 
 #define MOD_FS_MAX_SIZE     0x2000000 // 32 MB
 #define MOD_FS_MAX_FILES    0x200
@@ -55,6 +56,7 @@ struct ModFsFile {
     bool isText;
     bool isPublic;
 
+#ifndef _MSC_VER
     FUNCTION(read_bool, mod_fs_file_read_bool);
     FUNCTION(read_integer, mod_fs_file_read_integer);
     FUNCTION(read_number, mod_fs_file_read_number);
@@ -74,6 +76,7 @@ struct ModFsFile {
     FUNCTION(erase, mod_fs_file_erase);
     FUNCTION(set_text_mode, mod_fs_file_set_text_mode);
     FUNCTION(set_public, mod_fs_file_set_public);
+#endif
 };
 
 struct ModFs {
@@ -84,6 +87,7 @@ struct ModFs {
     u32 totalSize;
     bool isPublic;
 
+#ifndef _MSC_VER
     FUNCTION(get_filename, mod_fs_get_filename);
     FUNCTION(get_file, mod_fs_get_file);
     FUNCTION(create_file, mod_fs_create_file);
@@ -94,6 +98,7 @@ struct ModFs {
     FUNCTION(save, mod_fs_save);
     FUNCTION(delete, mod_fs_delete);
     FUNCTION(set_public, mod_fs_set_public);
+#endif
 };
 
 /* |description|

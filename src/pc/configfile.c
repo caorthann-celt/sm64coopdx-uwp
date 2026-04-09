@@ -206,7 +206,7 @@ bool         configDjuiThemeCenter                = true;
 #endif
 bool         configDjuiThemeGradients             = true;
 unsigned int configDjuiThemeFont                  = FONT_NORMAL;
-unsigned int configDjuiScale                      = 0;
+unsigned int configDjuiScale                      = 2;
 // other
 unsigned int configRulesVersion                   = 0;
 bool         configCompressOnStartup              = false;
@@ -651,6 +651,10 @@ const char *configfile_backup_name(void) {
     return CONFIGFILE_BACKUP;
 }
 
+static void configfile_refresh_runtime_state(void) {
+    gMasterVolume = (f32)configMasterVolume / 127.0f * (f32)gLuaVolumeMaster / 127.0f;
+}
+
 // Loads the config file specified by 'filename'
 static void configfile_load_internal(const char *filename, bool* error) {
     fs_file_t *file;
@@ -667,6 +671,7 @@ static void configfile_load_internal(const char *filename, bool* error) {
         // Create a new config file and save defaults
         printf("Config file '%s' not found. Creating it.\n", filename);
         configfile_save(filename);
+        configfile_refresh_runtime_state();
         return;
     }
 
@@ -782,7 +787,7 @@ NEXT_OPTION:
     if (configFrameLimit < 30)   { configFrameLimit = 30; }
     if (configFrameLimit > 3000) { configFrameLimit = 3000; }
 
-    gMasterVolume = (f32)configMasterVolume / 127.0f;
+    configfile_refresh_runtime_state();
 
     if (configPlayerModel >= CT_MAX) { configPlayerModel = 0; }
 

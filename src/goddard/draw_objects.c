@@ -1191,7 +1191,7 @@ void map_face_materials(struct ObjGroup *faces, struct ObjGroup *mtls) {
     register struct ListNode *linkFaces;
     struct GdObj *temp;
     register struct ListNode *linkMtls;
-    struct ObjMaterial *mtl;
+    struct ObjMaterial *mtl = NULL;
 
     linkFaces = faces->firstMember;
     while (linkFaces != NULL) {

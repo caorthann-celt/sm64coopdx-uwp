@@ -132,7 +132,21 @@ void set_skybox_color(u8 index, u8 value) {
 //
 
 static const Gfx SENTINEL_GFX[1] = {{{ _SHIFTL(G_ENDDL, 24, 8) | _SHIFTL(UINT32_MAX, 0, 24), UINT32_MAX }}};
+#ifdef _MSC_VER
+static u8 SENTINEL_VTX[sizeof(Vtx)];
+static const u8 *get_sentinel_vtx(void) {
+    static bool initialized = false;
+    if (!initialized) {
+        memset(SENTINEL_VTX, UINT8_MAX, sizeof(SENTINEL_VTX));
+        initialized = true;
+    }
+    return SENTINEL_VTX;
+}
+#define SENTINEL_VTX_BYTES get_sentinel_vtx()
+#else
 static const u8  SENTINEL_VTX[sizeof(Vtx)] = {[0 ... sizeof(Vtx) - 1] = UINT8_MAX};
+#define SENTINEL_VTX_BYTES SENTINEL_VTX
+#endif
 
 Gfx *gfx_allocate_internal(Gfx *gfx, u32 length) {
     if (!gfx) {
@@ -150,7 +164,7 @@ Vtx *vtx_allocate_internal(Vtx *vtx, u32 count) {
     } else {
         memset(vtx, 0, count * sizeof(Vtx));
     }
-    memcpy(vtx + count, SENTINEL_VTX, sizeof(Vtx));
+    memcpy(vtx + count, SENTINEL_VTX_BYTES, sizeof(Vtx));
     return vtx;
 }
 
@@ -375,7 +389,7 @@ u32 vtx_get_count(Vtx *vtx) {
     if (!vtx) { return 0; }
 
     u32 count = 0;
-    for (; memcmp(vtx, SENTINEL_VTX, sizeof(Vtx)) != 0; ++count, vtx++);
+    for (; memcmp(vtx, SENTINEL_VTX_BYTES, sizeof(Vtx)) != 0; ++count, vtx++);
     return count;
 }
 
@@ -390,7 +404,7 @@ Vtx *vtx_get_next_vertex(Vtx *vtx) {
     if (!vtx) { return NULL; }
 
     vtx++;
-    return memcmp(vtx, SENTINEL_VTX, sizeof(Vtx)) != 0 ? vtx : NULL;
+    return memcmp(vtx, SENTINEL_VTX_BYTES, sizeof(Vtx)) != 0 ? vtx : NULL;
 }
 
 void vtx_copy(Vtx *dest, Vtx *src, u32 count) {

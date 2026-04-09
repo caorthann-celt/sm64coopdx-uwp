@@ -851,7 +851,7 @@ void geo_obj_init_animation_accel(struct GraphNodeObject *graphNode, const struc
         graphNode->animInfo.curAnim = (struct Animation*)anim;
         graphNode->animInfo.animYTrans = 0;
         graphNode->animInfo.animFrameAccelAssist =
-            (anim->startFrame << 16) + ((anim->flags & ANIM_FLAG_BACKWARD) ? animAccel : -animAccel);
+            (anim->startFrame << 16) + ((anim->flags & ANIM_FLAG_BACKWARD) ? (s32) animAccel : -(s32) animAccel);
         graphNode->animInfo.animFrame = graphNode->animInfo.animFrameAccelAssist >> 16;
     }
 
