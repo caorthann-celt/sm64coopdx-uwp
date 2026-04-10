@@ -41,6 +41,60 @@ Everything the UWP build expects lives here:
 
 By default, `CMakeLists.txt` treats the repo root as `SM64COOPDX_ROOT`, so the normal game source stays in one place and the UWP extras stay here.
 
+## Tooling Setup
+
+There are really two environments involved here:
+
+- PowerShell / Visual Studio for the UWP configure and build steps
+- MSYS2 MINGW64 for the asset-generation Makefile that fills in `build/us_pc`
+
+### MSYS2 / MINGW64
+
+I expect MSYS2 to be installed at:
+
+```text
+C:\msys64
+```
+
+Download the newest MSYS2 installer, install it there, then open `mingw64.exe`.
+
+Run this first:
+
+```sh
+pacman -Syuu
+```
+
+If it tells you to close the shell, do that, reopen `mingw64.exe`, and run the same command again. That gets the package set fully up to date.
+
+Then install the packages this port currently needs:
+
+```sh
+pacman -S unzip make git mingw-w64-x86_64-gcc mingw-w64-x86_64-glew mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL python3
+```
+
+That gives me the pieces `tools/Makefile.assets` depends on, especially:
+
+- `bash`
+- `make`
+- `cpp` / MinGW GCC
+- `python3`
+
+### PowerShell / Windows Side
+
+On the PowerShell side, I do not need another compiler toolchain for the asset step. I just need the normal Windows/UWP build tools:
+
+- Visual Studio 2022 with the UWP / Windows application workload
+- CMake
+- the Windows SDK
+
+PowerShell itself does not need extra packages for `Makefile.assets`. The only important bit is that CMake can find:
+
+```text
+C:\msys64\usr\bin\bash.exe
+```
+
+That is what the UWP `CMakeLists.txt` now uses to run `tools/Makefile.assets` during configure.
+
 ## Build Notes
 
 From `ports/uwp`, configure with:
@@ -57,6 +111,8 @@ Then build with:
 ```powershell
 cmake --build build-real --config Release --target sm64coopdx-uwp -- /m
 ```
+
+During configure, the UWP CMake now runs `tools/Makefile.assets` first so the generated `build/us_pc` files already exist before the main project is generated.
 
 Use `sm64coopdx-uwp` as the Visual Studio startup project, not `ALL_BUILD`.
 
@@ -111,5 +167,6 @@ Other important pieces this port leans on:
 ## A Few Practical Notes
 
 - Generated `build/` and `build-real/` folders under `ports/uwp` are machine specific and should stay untracked.
+- Generated `build/us_pc` content comes from `tools/Makefile.assets`, and the UWP CMake now calls that for me during configure.
 - The checked-in `third_party` content is what this build uses. You do not need a separate `uwp-dep`, `uwp_gl_sample`, or `vcpkg` checkout to build this version.
 - This is a Dev Mode hobby port, not an upstream release branch.

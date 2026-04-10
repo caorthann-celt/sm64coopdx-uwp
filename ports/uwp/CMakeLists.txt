@@ -12,6 +12,10 @@ project(sm64coopdx-uwp LANGUAGES C CXX)
 set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 get_filename_component(SM64COOPDX_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+find_program(SM64COOPDX_BASH_EXECUTABLE NAMES bash bash.exe PATHS "C:/msys64/usr/bin" NO_DEFAULT_PATH)
+if(NOT SM64COOPDX_BASH_EXECUTABLE)
+    find_program(SM64COOPDX_BASH_EXECUTABLE NAMES bash bash.exe)
+endif()
 
 function(sm64coopdx_pick_existing_tree out_var marker_path)
     set(_picked "")
@@ -64,8 +68,29 @@ if(NOT SM64COOPDX_ROOT OR NOT EXISTS "${SM64COOPDX_ROOT}")
         "or point SM64COOPDX_ROOT at the game source tree.")
 endif()
 
-if(NOT EXISTS "${SM64COOPDX_ROOT}/build/us_pc")
-    message(FATAL_ERROR "SM64COOPDX_ROOT must point to a checkout with generated build/us_pc assets. Current value: ${SM64COOPDX_ROOT}")
+if(NOT EXISTS "${SM64COOPDX_ROOT}/tools/Makefile.assets")
+    message(FATAL_ERROR "Missing tools/Makefile.assets under ${SM64COOPDX_ROOT}")
+endif()
+
+if(NOT EXISTS "${SM64COOPDX_ROOT}/tools/generate_level_headers.py")
+    message(FATAL_ERROR "Missing tools/generate_level_headers.py under ${SM64COOPDX_ROOT}")
+endif()
+
+if(NOT SM64COOPDX_BASH_EXECUTABLE)
+    message(FATAL_ERROR "bash.exe was not found. Install MSYS2 or set it on PATH so tools/Makefile.assets can run.")
+endif()
+
+# I run the asset Makefile during configure so the generated build/us_pc sources
+# already exist by the time target_sources() gets evaluated.
+message(STATUS "Generating build/us_pc assets via tools/Makefile.assets")
+execute_process(
+    COMMAND "${SM64COOPDX_BASH_EXECUTABLE}" -lc "cd '${SM64COOPDX_ROOT}/tools' && make -f Makefile.assets"
+    WORKING_DIRECTORY "${SM64COOPDX_ROOT}"
+    RESULT_VARIABLE SM64COOPDX_ASSET_GEN_RESULT
+)
+
+if(NOT SM64COOPDX_ASSET_GEN_RESULT EQUAL 0)
+    message(FATAL_ERROR "tools/Makefile.assets failed with exit code ${SM64COOPDX_ASSET_GEN_RESULT}")
 endif()
 
 if(NOT SM64COOPDX_UWP_DEPS_ROOT OR NOT EXISTS "${SM64COOPDX_UWP_DEPS_ROOT}")
@@ -114,6 +139,19 @@ add_executable(${PROJECT_NAME} WIN32
     uwp/main.cpp
 )
 
+# I list the generated .c files explicitly here because CMake wants to know
+# about real compilation units up front, not after the build has already begun.
+set(SM64COOPDX_GENERATED_ASSET_SOURCES
+    "${SM64COOPDX_ROOT}/build/us_pc/assets/mario_anim_data.c"
+    "${SM64COOPDX_ROOT}/build/us_pc/assets/demo_data.c"
+)
+
+foreach(_generated_asset IN LISTS SM64COOPDX_GENERATED_ASSET_SOURCES)
+    if(NOT EXISTS "${_generated_asset}")
+        message(FATAL_ERROR "Expected generated asset source was not created: ${_generated_asset}")
+    endif()
+endforeach()
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/uwp/compat"
     "${UWP_DEP_INCLUDE}"
@@ -138,6 +176,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     NON_MATCHING=1
     AVOID_UB=1
     VERSION_US=1
+    ENHANCE_LEVEL_TEXTURES=1
     F3DEX_GBI_2E=1
     F3DEX_GBI_SHARED=1
     WINDOWS_BUILD=1
@@ -199,7 +238,6 @@ else()
         lib/src
         sound
         assets
-        build/us_pc/assets
     )
 
     set(SM64COOPDX_GAME_SOURCES)
@@ -240,6 +278,7 @@ else()
         uwp/compat/bzero.c
         "${SM64COOPDX_GLAD_ROOT}/uwp/glad.c"
         "${SM64COOPDX_ROOT}/src/pc/pc_main.c"
+        ${SM64COOPDX_GENERATED_ASSET_SOURCES}
         ${SM64COOPDX_GAME_SOURCES}
     )
 

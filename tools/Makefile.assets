@@ -1,0 +1,173 @@
+# tools/Makefile.assets
+#
+# Generates the build/us_pc subset I "believe" is actually needed:
+#   actors/
+#   assets/
+#   include/
+#   levels/
+#   sound/
+#   text/
+#   textures/
+#
+# It intentionally does NOT generate desktop object/output/runtime copy folders like:
+#   asm/ bin/ data/ dynos/ lang/ lib/ mods/ palettes/ res/ rsp/ src/
+#
+# Run from tools/:
+#   make -f Makefile.assets
+#
+# Or from repo root:
+#   make -f tools/Makefile.assets
+
+ROOT := ..
+BUILD_DIR := $(ROOT)/build/us_pc
+TOOLS_DIR := $(ROOT)/tools
+
+export PATH := /mingw64/bin:$(PATH)
+
+PYTHON := python3
+CPP := cpp -P
+N64GRAPHICS := $(TOOLS_DIR)/n64graphics
+TEXTCONV := $(TOOLS_DIR)/textconv
+
+VERSION ?= us
+TEXTURE_ENCODING := u8
+
+DEFINES := VERSION_US=1 NON_MATCHING=1 AVOID_UB=1 F3DEX_GBI_2E=1 F3DEX_GBI_SHARED=1 _LANGUAGE_C=1
+DEF_INC_CFLAGS := $(foreach d,$(DEFINES),-D$(d)) -I$(ROOT) -I$(ROOT)/include -I$(BUILD_DIR) -I$(BUILD_DIR)/include
+CPPFLAGS := -Wno-trigraphs $(DEF_INC_CFLAGS)
+
+SOUND_DIR := $(BUILD_DIR)/sound
+TEXT_DIR := $(BUILD_DIR)/text/$(VERSION)
+
+# Source-owned PNG inputs that produce generated .inc.c files in build/us_pc
+TEXTURE_PNGS := $(shell find "$(ROOT)/textures" -type f -name "*.png" 2>/dev/null)
+ACTOR_PNGS   := $(shell find "$(ROOT)/actors"   -type f -name "*.png" 2>/dev/null)
+LEVEL_PNGS   := $(shell find "$(ROOT)/levels"   -type f -name "*.png" 2>/dev/null)
+
+TEXTURE_OUTPUTS := $(patsubst $(ROOT)/%.png,$(BUILD_DIR)/%.inc.c,$(TEXTURE_PNGS))
+ACTOR_OUTPUTS   := $(patsubst $(ROOT)/%.png,$(BUILD_DIR)/%.inc.c,$(ACTOR_PNGS))
+LEVEL_OUTPUTS   := $(patsubst $(ROOT)/%.png,$(BUILD_DIR)/%.inc.c,$(LEVEL_PNGS))
+
+HEADER_OUTPUTS := \
+	$(BUILD_DIR)/include/level_headers.h
+
+TEXT_OUTPUTS := \
+	$(TEXT_DIR)/define_courses.inc.c \
+	$(TEXT_DIR)/define_text.inc.c
+
+ASSET_OUTPUTS := \
+	$(BUILD_DIR)/assets/mario_anim_data.c \
+	$(BUILD_DIR)/assets/demo_data.c
+
+SOUND_RAW_OUTPUTS := \
+	$(SOUND_DIR)/sound_data.tbl \
+	$(SOUND_DIR)/sound_data.ctl \
+	$(SOUND_DIR)/bank_sets \
+	$(SOUND_DIR)/sequences.bin
+
+SOUND_INC_OUTPUTS := \
+	$(SOUND_DIR)/sound_data.tbl.inc.c \
+	$(SOUND_DIR)/sound_data.ctl.inc.c \
+	$(SOUND_DIR)/bank_sets.inc.c \
+	$(SOUND_DIR)/sequences.bin.inc.c
+
+ALL_OUTPUTS := \
+	$(HEADER_OUTPUTS) \
+	$(TEXT_OUTPUTS) \
+	$(ASSET_OUTPUTS) \
+	$(SOUND_RAW_OUTPUTS) \
+	$(SOUND_INC_OUTPUTS) \
+	$(TEXTURE_OUTPUTS) \
+	$(ACTOR_OUTPUTS) \
+	$(LEVEL_OUTPUTS)
+
+all: prep $(ALL_OUTPUTS)
+
+prep:
+	mkdir -p "$(BUILD_DIR)"
+	mkdir -p "$(BUILD_DIR)/include"
+	mkdir -p "$(BUILD_DIR)/assets"
+	mkdir -p "$(SOUND_DIR)"
+	mkdir -p "$(TEXT_DIR)"
+
+headers: $(HEADER_OUTPUTS)
+text: $(TEXT_OUTPUTS)
+assets: $(ASSET_OUTPUTS)
+sound: $(SOUND_RAW_OUTPUTS) $(SOUND_INC_OUTPUTS)
+textures: $(TEXTURE_OUTPUTS)
+actors: $(ACTOR_OUTPUTS)
+levels: $(LEVEL_OUTPUTS)
+
+# --------------------------------------
+# include/
+# --------------------------------------
+
+$(BUILD_DIR)/include/level_headers.h: $(ROOT)/levels/level_defines.h $(TOOLS_DIR)/generate_level_headers.py
+	mkdir -p "$(dir $@)"
+	$(PYTHON) "$(TOOLS_DIR)/generate_level_headers.py" "$<" > "$@"
+
+# --------------------------------------
+# text/
+# --------------------------------------
+
+$(BUILD_DIR)/text/%/define_courses.inc.c: $(ROOT)/text/define_courses.inc.c $(ROOT)/text/%/courses.h
+	mkdir -p "$(dir $@)"
+	$(CPP) -x c $(CPPFLAGS) "$<" -o - -I"$(ROOT)/text/$*" | "$(TEXTCONV)" "$(ROOT)/charmap.txt" - "$@"
+
+$(BUILD_DIR)/text/%/define_text.inc.c: $(ROOT)/text/define_text.inc.c $(ROOT)/text/%/courses.h $(ROOT)/text/%/dialogs.h
+	mkdir -p "$(dir $@)"
+	$(CPP) -x c $(CPPFLAGS) "$<" -o - -I"$(ROOT)/text/$*" | "$(TEXTCONV)" "$(ROOT)/charmap.txt" - "$@"
+
+# --------------------------------------
+# assets/
+# --------------------------------------
+
+$(BUILD_DIR)/assets/mario_anim_data.c: $(wildcard $(ROOT)/assets/anims/*.inc.c)
+	mkdir -p "$(dir $@)"
+	cd "$(ROOT)" && $(PYTHON) tools/mario_anims_converter.py > "build/us_pc/assets/mario_anim_data.c"
+
+$(BUILD_DIR)/assets/demo_data.c: $(ROOT)/assets/demo_data.json $(wildcard $(ROOT)/assets/demos/*.bin)
+	mkdir -p "$(dir $@)"
+	cd "$(ROOT)" && $(PYTHON) tools/demo_data_converter.py assets/demo_data.json $(DEF_INC_CFLAGS) > "build/us_pc/assets/demo_data.c"
+
+# --------------------------------------
+# sound/
+# --------------------------------------
+
+$(SOUND_DIR)/sound_data.tbl: $(ROOT)/sound/sound_data_compressed.tbl
+	mkdir -p "$(dir $@)"
+	$(PYTHON) "$(ROOT)/tools/decompress.py" "$<" "$@"
+
+$(SOUND_DIR)/sound_data.ctl: $(ROOT)/sound/sound_data_compressed.ctl
+	mkdir -p "$(dir $@)"
+	$(PYTHON) "$(ROOT)/tools/decompress.py" "$<" "$@"
+
+$(SOUND_DIR)/bank_sets: $(ROOT)/sound/bank_sets_compressed
+	mkdir -p "$(dir $@)"
+	$(PYTHON) "$(ROOT)/tools/decompress.py" "$<" "$@"
+
+$(SOUND_DIR)/sequences.bin: $(ROOT)/sound/sequences_compressed.bin
+	mkdir -p "$(dir $@)"
+	$(PYTHON) "$(ROOT)/tools/decompress.py" "$<" "$@"
+
+$(BUILD_DIR)/sound/%.inc.c: $(BUILD_DIR)/sound/%
+	mkdir -p "$(dir $@)"
+	hexdump -v -e '1/1 "0x%X,"' "$<" > "$@"
+	echo >> "$@"
+
+# --------------------------------------
+# textures/ actors/ levels/
+# --------------------------------------
+# Uses the format embedded in the filename:
+#   foo.rgba16.png -> rgba16
+#   bar.ia8.png    -> ia8
+#   baz.rgba32.png -> rgba32
+
+$(BUILD_DIR)/%.inc.c: $(ROOT)/%.png
+	mkdir -p "$(dir $@)"
+	"$(N64GRAPHICS)" -s $(TEXTURE_ENCODING) -i "$@" -g "$<" -f $(lastword $(subst ., ,$(basename $<)))
+
+clean:
+	rm -rf "$(BUILD_DIR)"
+
+.PHONY: all prep headers text assets sound textures actors levels clean
