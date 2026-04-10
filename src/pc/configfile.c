@@ -73,7 +73,11 @@ ConfigWindow configWindow       = {
     .h = DESIRED_SCREEN_HEIGHT,
     .vsync = 1,
     .reset = false,
+#if defined(UWP_BUILD)
+    .fullscreen = true,
+#else
     .fullscreen = false,
+#endif
     .exiting_fullscreen = false,
     .settings_changed = false,
     .msaa = 0,
@@ -206,7 +210,7 @@ bool         configDjuiThemeCenter                = true;
 #endif
 bool         configDjuiThemeGradients             = true;
 unsigned int configDjuiThemeFont                  = FONT_NORMAL;
-unsigned int configDjuiScale                      = 2;
+unsigned int configDjuiScale                      = 0;
 // other
 unsigned int configRulesVersion                   = 0;
 bool         configCompressOnStartup              = false;

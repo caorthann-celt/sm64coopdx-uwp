@@ -78,6 +78,13 @@ static void gfx_sdl_set_fullscreen(void) {
     if (configWindow.fullscreen == IS_FULLSCREEN())
         return;
     if (configWindow.fullscreen) {
+#if defined(UWP_BUILD)
+        SDL_DisplayMode desktopMode = { 0 };
+        int displayIndex = SDL_GetWindowDisplayIndex(wnd);
+        if (displayIndex >= 0 && SDL_GetDesktopDisplayMode(displayIndex, &desktopMode) == 0) {
+            SDL_SetWindowSize(wnd, desktopMode.w, desktopMode.h);
+        }
+#endif
         SDL_SetWindowFullscreen(wnd, SDL_WINDOW_FULLSCREEN_DESKTOP);
     } else {
         SDL_SetWindowFullscreen(wnd, 0);
