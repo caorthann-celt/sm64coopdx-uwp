@@ -1,13 +1,4 @@
 // spawn_default_star.c.inc
-#include <math.h>
-
-static void sanitize_star_spawn_position(void) {
-    if (!isfinite(o->oPosX) || !isfinite(o->oPosZ) || !isfinite(o->oForwardVel)) {
-        o->oPosX = o->oHomeX;
-        o->oPosZ = o->oHomeZ;
-        o->oForwardVel = 0.0f;
-    }
-}
 
 void bhv_star_number_loop(void) {
 
@@ -131,7 +122,6 @@ void bhv_star_spawn_loop(void) {
 
         case 1:
             obj_move_xyz_using_fvel_and_yaw(o);
-            sanitize_star_spawn_position();
             o->oStarSpawnUnkFC += o->oVelY;
             o->oPosY = o->oStarSpawnUnkFC + sins((o->oTimer * 0x8000) / 30) * 400.0f;
             o->oFaceAngleYaw += 0x1000;
@@ -152,7 +142,6 @@ void bhv_star_spawn_loop(void) {
 
             spawn_object(o, MODEL_NONE, bhvSparkleSpawn);
             obj_move_xyz_using_fvel_and_yaw(o);
-            sanitize_star_spawn_position();
             o->oFaceAngleYaw = o->oFaceAngleYaw - o->oTimer * 0x10 + 0x1000;
             cur_obj_play_sound_1(SOUND_ENV_STAR);
 

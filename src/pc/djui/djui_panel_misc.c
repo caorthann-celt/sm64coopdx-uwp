@@ -8,10 +8,11 @@
 #include "pc/utils/misc.h"
 #include "pc/configfile.h"
 #include "game/hardcoded.h"
-#if defined(_WIN32) || defined(_WIN64)
+#if !defined(UWP_BUILD) && (defined(_WIN32) || defined(_WIN64))
 #include <windows.h>
 #endif
 
+#ifndef UWP_BUILD
 static void djui_panel_options_open_user_folder(UNUSED struct DjuiBase* caller) {
 #if defined(_WIN32) || defined(_WIN64)
     // Windows
@@ -28,6 +29,7 @@ static void djui_panel_options_open_user_folder(UNUSED struct DjuiBase* caller) 
     system(command);
 #endif
 }
+#endif
 
 #ifdef DEVELOPMENT
 void djui_panel_options_debug_create(struct DjuiBase* caller) {
@@ -42,10 +44,12 @@ void djui_panel_options_debug_create(struct DjuiBase* caller) {
         djui_checkbox_create(body, DLANG(MISC, DEBUG_ERRORS), &configDebugError, NULL);
 
 #ifndef HANDHELD
+#ifndef UWP_BUILD
 #if defined(_WIN32) || defined(_WIN64)
         djui_button_create(body, DLANG(OPTIONS, APPDATA), DJUI_BUTTON_STYLE_NORMAL, djui_panel_options_open_user_folder);
 #elif __linux__ || __APPLE__ || __MACH__
         djui_button_create(body, DLANG(OPTIONS, USER_FOLDER), DJUI_BUTTON_STYLE_NORMAL, djui_panel_options_open_user_folder);
+#endif
 #endif
 #endif
         djui_button_create(body, DLANG(MENU, BACK), DJUI_BUTTON_STYLE_BACK, djui_panel_menu_back);
@@ -74,10 +78,12 @@ void djui_panel_misc_create(struct DjuiBase* caller) {
 
 #ifndef DEVELOPMENT
 #ifndef HANDHELD
+#ifndef UWP_BUILD
 #if defined(_WIN32) || defined(_WIN64)
         djui_button_create(body, DLANG(OPTIONS, APPDATA), DJUI_BUTTON_STYLE_NORMAL, djui_panel_options_open_user_folder);
 #elif __linux__ || __APPLE__ || __MACH__
         djui_button_create(body, DLANG(OPTIONS, USER_FOLDER), DJUI_BUTTON_STYLE_NORMAL, djui_panel_options_open_user_folder);
+#endif
 #endif
 #endif
 #endif

@@ -12,6 +12,12 @@ Current layout:
 
 The goal here was convenience and preservation. If somebody opens this port up months later, hopefully they should be able to see what it depends on and build it without doing archaeology.
 
+## CoopNet Notice
+
+This UWP port includes a modified copy of CoopNet in `third_party/coopnet`.
+
+The changes are UWP/Xbox compatibility changes made so CoopNet can build and run inside the UWP package environment. CoopNet remains under its original license; see `third_party/coopnet/LICENSE`.
+
 ## Credits
 
 A big shout goes to Daniel Worley for the UWP/OpenGL/Xbox groundwork and documentation that helped make this port much less painful to figure out:

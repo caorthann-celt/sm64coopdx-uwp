@@ -15,6 +15,8 @@ It keeps the main game in the normal repo, then adds the extra bits the UWP buil
 - vendored CoopNet source used by the port
 - packaging files for the MSIX build
 
+This port vendors a modified UWP compatible copy of CoopNet under `third_party/coopnet`; see `third_party/README.md` and `third_party/coopnet/LICENSE`.
+
 ## Current Shape Of The Port
 
 Right now this build:
@@ -100,16 +102,13 @@ That is what the UWP `CMakeLists.txt` now uses to run `tools/Makefile.assets` du
 From `ports/uwp`, configure with:
 
 ```powershell
-cmake -S . `
-  -B build-real `
-  -G "Visual Studio 17 2022" -A x64 `
-  -DSM64COOPDX_USE_PLACEHOLDER_APP=OFF
+cmake --preset uwp-release
 ```
 
 Then build with:
 
 ```powershell
-cmake --build build-real --config Release --target sm64coopdx-uwp -- /m
+cmake --build --preset uwp-release -- /m
 ```
 
 During configure, the UWP CMake now runs `tools/Makefile.assets` first so the generated `build/us_pc` files already exist before the main project is generated.
@@ -139,9 +138,9 @@ The port now uses a pretty straightforward model:
 - `LocalState` is the normal app-local home
 - if the ROM is found on `E:\`, then `E:\sm64coopdx` becomes the active writable root for that session
 - packaged default content is still available as a read fallback
-- missing default files can be seeded into the active writable root without holding startup hostage
+- missing default files are copied into the active writable root during the normal loading screen
 
-That keeps first launch much less painful than blocking the whole boot sequence on a giant recursive copy.
+That keeps first launch predictable without making the audio/game startup fight a background copy.
 
 ## Credits
 
@@ -166,7 +165,7 @@ Other important pieces this port leans on:
 
 ## A Few Practical Notes
 
-- Generated `build/` and `build-real/` folders under `ports/uwp` are machine specific and should stay untracked.
-- Generated `build/us_pc` content comes from `tools/Makefile.assets`, and the UWP CMake now calls that for me during configure.
+- Generated `build/` folders under `ports/uwp` are machine specific and should stay untracked.
+- Generated `build/us_pc` content comes from `tools/Makefile.assets`, and the UWP CMake runs that during configure.
 - The checked-in `third_party` content is what this build uses. You do not need a separate `uwp-dep`, `uwp_gl_sample`, or `vcpkg` checkout to build this version.
 - This is a Dev Mode hobby port, not an upstream release branch.

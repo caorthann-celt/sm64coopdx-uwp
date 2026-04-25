@@ -79,9 +79,9 @@ extern f32 gCosineTable[];
 #else
 
 // Fallback to the original implementation for iDO
-#define min(a,b) (a < b ? a : b)
-#define max(a,b) (a > b ? a : b)
-#define sqr(x) (x * x)
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#define sqr(x) ((x) * (x))
 #define absx(x) ((x) < 0 ? -(x) : (x))
 #define clamp(x, a, b) (min(max(x, a), b))
 

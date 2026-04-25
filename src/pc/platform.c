@@ -24,7 +24,6 @@
 #include "fs/fs.h"
 #include "debuglog.h"
 #include "configfile.h"
-#include "thread.h"
 
 const char *sys_resource_path(void);
 const char *sys_exe_path_dir(void);
@@ -86,8 +85,6 @@ static const char *sys_uwp_local_path(void) {
 
 static bool sSysUwpLocalPrepared = false;
 static bool sSysUwpUseExternalStorage = false;
-static bool sSysUwpSeedStarted = false;
-static struct ThreadHandle sSysUwpSeedThread = { 0 };
 static char sSysUwpActiveRoot[SYS_MAX_PATH] = { 0 };
 
 static void sys_uwp_ensure_dir(const char *path) {
@@ -95,75 +92,68 @@ static void sys_uwp_ensure_dir(const char *path) {
     CreateDirectoryA(path, NULL);
 }
 
-static bool sys_uwp_copy_file(const char *srcPath, const char *dstPath) {
-    if (!fs_sys_file_exists(srcPath) || fs_sys_file_exists(dstPath)) {
-        return true;
-    }
-
-    return CopyFileA(srcPath, dstPath, TRUE) != 0;
-}
-
-static bool sys_uwp_copy_tree(const char *srcRoot, const char *dstRoot) {
+static unsigned int sys_uwp_count_missing_files(const char *srcRoot, const char *dstRoot) {
     char searchPath[SYS_MAX_PATH] = { 0 };
     char srcPath[SYS_MAX_PATH] = { 0 };
     char dstPath[SYS_MAX_PATH] = { 0 };
+    unsigned int count = 0;
 
-    if (!fs_sys_dir_exists(srcRoot)) { return true; }
-
-    sys_uwp_ensure_dir(dstRoot);
-
-    if (snprintf(searchPath, sizeof(searchPath), "%s\\*", srcRoot) <= 0) {
-        return false;
-    }
+    if (!fs_sys_dir_exists(srcRoot)) { return 0; }
+    if (snprintf(searchPath, sizeof(searchPath), "%s\\*", srcRoot) <= 0) { return 0; }
 
     WIN32_FIND_DATAA findData;
     HANDLE findHandle = FindFirstFileA(searchPath, &findData);
-    if (findHandle == INVALID_HANDLE_VALUE) {
-        return false;
-    }
+    if (findHandle == INVALID_HANDLE_VALUE) { return 0; }
 
     do {
-        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) {
-            continue;
-        }
-
-        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", srcRoot, findData.cFileName) <= 0) {
-            FindClose(findHandle);
-            return false;
-        }
-
-        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", dstRoot, findData.cFileName) <= 0) {
-            FindClose(findHandle);
-            return false;
-        }
+        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) { continue; }
+        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", srcRoot, findData.cFileName) <= 0) { continue; }
+        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", dstRoot, findData.cFileName) <= 0) { continue; }
 
         if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
-            if (!sys_uwp_copy_tree(srcPath, dstPath)) {
-                FindClose(findHandle);
-                return false;
-            }
-        } else if (!sys_uwp_copy_file(srcPath, dstPath)) {
-            FindClose(findHandle);
-            return false;
+            count += sys_uwp_count_missing_files(srcPath, dstPath);
+        } else if (!fs_sys_file_exists(dstPath)) {
+            count++;
         }
     } while (FindNextFileA(findHandle, &findData) != 0);
 
     FindClose(findHandle);
-    return true;
+    return count;
 }
 
-static void sys_uwp_seed_storage_subdir(const char *storageRoot, const char *resourceRoot, const char *subdir) {
+static void sys_uwp_copy_missing_tree(const char *srcRoot, const char *dstRoot,
+                                      void (*progress)(const char *, unsigned int, unsigned int),
+                                      unsigned int *done, unsigned int total) {
+    char searchPath[SYS_MAX_PATH] = { 0 };
     char srcPath[SYS_MAX_PATH] = { 0 };
     char dstPath[SYS_MAX_PATH] = { 0 };
 
-    if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", resourceRoot, subdir) <= 0) { return; }
-    if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", storageRoot, subdir) <= 0) { return; }
-    if (!fs_sys_dir_exists(srcPath)) { return; }
+    if (!fs_sys_dir_exists(srcRoot)) { return; }
+    sys_uwp_ensure_dir(dstRoot);
+    if (snprintf(searchPath, sizeof(searchPath), "%s\\*", srcRoot) <= 0) { return; }
 
-    sys_uwp_copy_tree(srcPath, dstPath);
+    WIN32_FIND_DATAA findData;
+    HANDLE findHandle = FindFirstFileA(searchPath, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE) { return; }
+
+    do {
+        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) { continue; }
+        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", srcRoot, findData.cFileName) <= 0) { continue; }
+        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", dstRoot, findData.cFileName) <= 0) { continue; }
+
+        if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+            sys_uwp_copy_missing_tree(srcPath, dstPath, progress, done, total);
+        } else if (!fs_sys_file_exists(dstPath)) {
+            CopyFileA(srcPath, dstPath, TRUE);
+            (*done)++;
+            if (progress != NULL) { progress(findData.cFileName, *done, total); }
+        }
+    } while (FindNextFileA(findHandle, &findData) != 0);
+
+    FindClose(findHandle);
 }
 
-static void sys_uwp_prepare_storage_root(const char *root, const char *contentRoot, bool includeTmpDir) {
+static void sys_uwp_prepare_storage_root(const char *root, bool includeTmpDir) {
     char path[SYS_MAX_PATH] = { 0 };
 
     sys_uwp_ensure_dir(root);
@@ -187,39 +177,16 @@ static void sys_uwp_prepare_storage_root(const char *root, const char *contentRo
             sys_uwp_ensure_dir(path);
         }
     }
-
-    if (contentRoot != NULL && contentRoot[0] != '\0') {
-        const char *contentSubdirs[] = {
-            "dynos",
-            "mods",
-            "palettes",
-            "lang",
-        };
-
-        for (size_t i = 0; i < sizeof(contentSubdirs) / sizeof(contentSubdirs[0]); i++) {
-            sys_uwp_seed_storage_subdir(root, contentRoot, contentSubdirs[i]);
-        }
-    }
 }
 
 static void sys_uwp_prepare_local_root(const char *localRoot) {
     if (sSysUwpLocalPrepared) { return; }
-    sys_uwp_prepare_storage_root(localRoot, NULL, true);
+    sys_uwp_prepare_storage_root(localRoot, true);
     sSysUwpLocalPrepared = true;
 }
 
 static void sys_uwp_prepare_external_root(const char *externalRoot) {
-    sys_uwp_prepare_storage_root(externalRoot, NULL, false);
-}
-
-static void *sys_uwp_seed_active_root_thread(void *unused) {
-    (void)unused;
-    const char *resourceRoot = sys_resource_path();
-    if (resourceRoot != NULL && resourceRoot[0] != '\0' && sSysUwpActiveRoot[0] != '\0') {
-        bool includeTmpDir = !sSysUwpUseExternalStorage;
-        sys_uwp_prepare_storage_root(sSysUwpActiveRoot, resourceRoot, includeTmpDir);
-    }
-    return NULL;
+    sys_uwp_prepare_storage_root(externalRoot, false);
 }
 #endif
 
@@ -447,20 +414,40 @@ bool sys_use_external_storage(void) {
 #endif
 }
 
-void sys_seed_active_storage_async(void) {
+void sys_seed_active_storage(void (*progress)(const char *name, unsigned int done, unsigned int total)) {
 #if defined(_WIN32) && defined(UWP_BUILD)
     (void)sys_user_path();
-    if (sSysUwpSeedStarted || sSysUwpActiveRoot[0] == '\0') {
-        return;
+
+    const char *resourceRoot = sys_resource_path();
+    if (resourceRoot == NULL || resourceRoot[0] == '\0' || sSysUwpActiveRoot[0] == '\0') { return; }
+
+    const char *contentSubdirs[] = {
+        "dynos",
+        "mods",
+        "palettes",
+        "lang",
+    };
+
+    unsigned int total = 0;
+    char srcPath[SYS_MAX_PATH] = { 0 };
+    char dstPath[SYS_MAX_PATH] = { 0 };
+
+    for (size_t i = 0; i < sizeof(contentSubdirs) / sizeof(contentSubdirs[0]); i++) {
+        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", resourceRoot, contentSubdirs[i]) <= 0) { continue; }
+        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", sSysUwpActiveRoot, contentSubdirs[i]) <= 0) { continue; }
+        total += sys_uwp_count_missing_files(srcPath, dstPath);
     }
 
-    sSysUwpSeedStarted = true;
-    if (init_thread_handle(&sSysUwpSeedThread, sys_uwp_seed_active_root_thread, NULL, NULL, 0) == 0) {
-        detach_thread(&sSysUwpSeedThread);
-        destroy_mutex(&sSysUwpSeedThread);
-    } else {
-        sys_uwp_seed_active_root_thread(NULL);
+    if (total == 0) { return; }
+
+    unsigned int done = 0;
+    for (size_t i = 0; i < sizeof(contentSubdirs) / sizeof(contentSubdirs[0]); i++) {
+        if (snprintf(srcPath, sizeof(srcPath), "%s\\%s", resourceRoot, contentSubdirs[i]) <= 0) { continue; }
+        if (snprintf(dstPath, sizeof(dstPath), "%s\\%s", sSysUwpActiveRoot, contentSubdirs[i]) <= 0) { continue; }
+        sys_uwp_copy_missing_tree(srcPath, dstPath, progress, &done, total);
     }
+#else
+    (void)progress;
 #endif
 }
 

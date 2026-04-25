@@ -23,7 +23,7 @@ const char *sys_user_path(void);
 const char *sys_user_path_local(void);
 const char *sys_resource_path(void);
 bool sys_use_external_storage(void);
-void sys_seed_active_storage_async(void);
+void sys_seed_active_storage(void (*progress)(const char *name, unsigned int done, unsigned int total));
 const char *sys_exe_path_dir(void);
 const char *sys_exe_path_file(void);
 const char *sys_file_extension(const char *fpath);

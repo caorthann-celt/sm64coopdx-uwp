@@ -9,6 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(sm64coopdx-uwp LANGUAGES C CXX)
 
+if(CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Supported build types" FORCE)
+endif()
+
 set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 get_filename_component(SM64COOPDX_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
@@ -39,9 +43,6 @@ sm64coopdx_pick_existing_tree(SM64COOPDX_UWP_DEPS_ROOT_DEFAULT "x64/lib/SDL2.lib
 sm64coopdx_pick_existing_tree(SM64COOPDX_GLAD_ROOT_DEFAULT "uwp/glad.c"
     "${CMAKE_CURRENT_LIST_DIR}/third_party/glad"
 )
-sm64coopdx_pick_existing_tree(SM64COOPDX_MESA_DLL_FALLBACK_DIR_DEFAULT "libglapi.dll"
-    "${CMAKE_CURRENT_LIST_DIR}/third_party/uwp-deps/x64/bin"
-)
 sm64coopdx_pick_existing_tree(SM64COOPDX_VENDORED_DEPS_ROOT_DEFAULT "include/lua.h"
     "${CMAKE_CURRENT_LIST_DIR}/third_party/vcpkg-deps"
 )
@@ -49,10 +50,8 @@ sm64coopdx_pick_existing_tree(SM64COOPDX_VENDORED_DEPS_ROOT_DEFAULT "include/lua
 set(SM64COOPDX_ROOT "${SM64COOPDX_ROOT_DEFAULT}" CACHE PATH "sm64coopdx source tree with generated build/us_pc assets")
 set(SM64COOPDX_UWP_DEPS_ROOT "${SM64COOPDX_UWP_DEPS_ROOT_DEFAULT}" CACHE PATH "Root of the UWP runtime bundle")
 set(SM64COOPDX_GLAD_ROOT "${SM64COOPDX_GLAD_ROOT_DEFAULT}" CACHE PATH "Root of the GLAD source and headers used by the UWP build")
-set(SM64COOPDX_MESA_DLL_FALLBACK_DIR "${SM64COOPDX_MESA_DLL_FALLBACK_DIR_DEFAULT}" CACHE PATH "Fallback Mesa DLL directory")
 set(SM64COOPDX_VENDORED_DEPS_ROOT "${SM64COOPDX_VENDORED_DEPS_ROOT_DEFAULT}" CACHE PATH "Root of the Lua, zlib, and libjuice libraries used by the UWP build")
 set(SM64COOPNET_SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}/third_party/coopnet" CACHE PATH "CoopNet source checkout")
-option(SM64COOPDX_USE_PLACEHOLDER_APP "Build the UWP dependency smoke-test app before linking sm64coopdx" ON)
 
 set(UWP_DEP_X64 "${SM64COOPDX_UWP_DEPS_ROOT}/x64")
 set(UWP_DEP_BIN "${UWP_DEP_X64}/bin")
@@ -80,8 +79,7 @@ if(NOT SM64COOPDX_BASH_EXECUTABLE)
     message(FATAL_ERROR "bash.exe was not found. Install MSYS2 or set it on PATH so tools/Makefile.assets can run.")
 endif()
 
-# I run the asset Makefile during configure so the generated build/us_pc sources
-# already exist by the time target_sources() gets evaluated.
+# Generate assets during configure so build/us_pc sources exist before target_sources().
 message(STATUS "Generating build/us_pc assets via tools/Makefile.assets")
 execute_process(
     COMMAND "${SM64COOPDX_BASH_EXECUTABLE}" -lc "cd '${SM64COOPDX_ROOT}/tools' && make -f Makefile.assets"
@@ -201,100 +199,96 @@ if(MSVC)
     )
 endif()
 
-if(SM64COOPDX_USE_PLACEHOLDER_APP)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SM64COOPDX_USE_PLACEHOLDER_APP=1)
-else()
-    set(SM64COOPDX_SOURCE_DIRS
-        src
-        src/engine
-        src/game
-        src/goddard
-        src/goddard/dynlists
-        src/audio
-        src/menu
-        src/buffers
-        src/pc
-        src/pc/audio
-        src/pc/controller
-        src/pc/dev
-        src/pc/djui
-        src/pc/fs
-        src/pc/fs/packtypes
-        src/pc/gfx
-        src/pc/lua
-        src/pc/lua/utils
-        src/pc/mods
-        src/pc/network
-        src/pc/network/coopnet
-        src/pc/network/packets
-        src/pc/network/socket
-        src/pc/os
-        src/pc/utils
-        src/pc/utils/miniz
-        src/pc/mumble
-        data
-        bin
-        actors
-        lib/src
-        sound
-        assets
-    )
+set(SM64COOPDX_SOURCE_DIRS
+    src
+    src/engine
+    src/game
+    src/goddard
+    src/goddard/dynlists
+    src/audio
+    src/menu
+    src/buffers
+    src/pc
+    src/pc/audio
+    src/pc/controller
+    src/pc/dev
+    src/pc/djui
+    src/pc/fs
+    src/pc/fs/packtypes
+    src/pc/gfx
+    src/pc/lua
+    src/pc/lua/utils
+    src/pc/mods
+    src/pc/network
+    src/pc/network/coopnet
+    src/pc/network/packets
+    src/pc/network/socket
+    src/pc/os
+    src/pc/utils
+    src/pc/utils/miniz
+    src/pc/mumble
+    data
+    bin
+    actors
+    lib/src
+    sound
+    assets
+)
 
-    set(SM64COOPDX_GAME_SOURCES)
-    foreach(_source_dir IN LISTS SM64COOPDX_SOURCE_DIRS)
-        file(GLOB _c_sources CONFIGURE_DEPENDS
-            "${SM64COOPDX_ROOT}/${_source_dir}/*.c"
-        )
-        file(GLOB _cpp_sources CONFIGURE_DEPENDS
-            "${SM64COOPDX_ROOT}/${_source_dir}/*.cpp"
-        )
-        list(APPEND SM64COOPDX_GAME_SOURCES ${_c_sources} ${_cpp_sources})
-    endforeach()
-
-    file(GLOB_RECURSE SM64COOPDX_LEVEL_SOURCES CONFIGURE_DEPENDS
-        "${SM64COOPDX_ROOT}/levels/*.c"
+set(SM64COOPDX_GAME_SOURCES)
+foreach(_source_dir IN LISTS SM64COOPDX_SOURCE_DIRS)
+    file(GLOB _c_sources CONFIGURE_DEPENDS
+        "${SM64COOPDX_ROOT}/${_source_dir}/*.c"
     )
-    list(APPEND SM64COOPDX_GAME_SOURCES ${SM64COOPDX_LEVEL_SOURCES})
-
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/discord/")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/update_checker\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/audio/audio_sdl1\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/controller/controller_sdl1\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_sdl1\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_direct3d11\\.cpp$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_dxgi\\.cpp$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_opengl_legacy\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/game/main\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/lib/src/leointerrupt\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/lib/src/unk_shindou_file_3\\.c$")
-    list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
-    list(REMOVE_ITEM SM64COOPDX_GAME_SOURCES "${SM64COOPDX_ROOT}/src/pc/pc_main.c")
-
-    target_sources(${PROJECT_NAME} PRIVATE
-        uwp/sm64coopdx_entry.cpp
-        uwp/compat/dirent.cpp
-        uwp/compat/pthread.cpp
-        uwp/compat/update_checker_stub.c
-        uwp/compat/bzero.c
-        "${SM64COOPDX_GLAD_ROOT}/uwp/glad.c"
-        "${SM64COOPDX_ROOT}/src/pc/pc_main.c"
-        ${SM64COOPDX_GENERATED_ASSET_SOURCES}
-        ${SM64COOPDX_GAME_SOURCES}
+    file(GLOB _cpp_sources CONFIGURE_DEPENDS
+        "${SM64COOPDX_ROOT}/${_source_dir}/*.cpp"
     )
+    list(APPEND SM64COOPDX_GAME_SOURCES ${_c_sources} ${_cpp_sources})
+endforeach()
 
-    file(GLOB SM64COOPNET_COMMON_SOURCES CONFIGURE_DEPENDS
-        "${SM64COOPNET_SOURCE_ROOT}/common/*.cpp"
-    )
-    target_sources(${PROJECT_NAME} PRIVATE ${SM64COOPNET_COMMON_SOURCES})
+file(GLOB_RECURSE SM64COOPDX_LEVEL_SOURCES CONFIGURE_DEPENDS
+    "${SM64COOPDX_ROOT}/levels/*.c"
+)
+list(APPEND SM64COOPDX_GAME_SOURCES ${SM64COOPDX_LEVEL_SOURCES})
 
-    set_source_files_properties("${SM64COOPDX_ROOT}/src/pc/pc_main.c" PROPERTIES
-        COMPILE_OPTIONS "/Dmain=sm64coopdx_main"
-        LANGUAGE C
-    )
-    set_source_files_properties("${SM64COOPDX_ROOT}/src/pc/mods/mod_fs.cpp" PROPERTIES
-        COMPILE_OPTIONS "/FI${CMAKE_CURRENT_LIST_DIR}/uwp/compat/strings.h"
-    )
-endif()
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/discord/")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/update_checker\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/audio/audio_sdl1\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/controller/controller_sdl1\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_sdl1\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_direct3d11\\.cpp$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_dxgi\\.cpp$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/pc/gfx/gfx_opengl_legacy\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/src/game/main\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/lib/src/leointerrupt\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "/lib/src/unk_shindou_file_3\\.c$")
+list(FILTER SM64COOPDX_GAME_SOURCES EXCLUDE REGEX "\\.inc\\.c$")
+list(REMOVE_ITEM SM64COOPDX_GAME_SOURCES "${SM64COOPDX_ROOT}/src/pc/pc_main.c")
+
+target_sources(${PROJECT_NAME} PRIVATE
+    uwp/sm64coopdx_entry.cpp
+    uwp/compat/dirent.cpp
+    uwp/compat/pthread.cpp
+    uwp/compat/update_checker_stub.c
+    uwp/compat/bzero.c
+    "${SM64COOPDX_GLAD_ROOT}/uwp/glad.c"
+    "${SM64COOPDX_ROOT}/src/pc/pc_main.c"
+    ${SM64COOPDX_GENERATED_ASSET_SOURCES}
+    ${SM64COOPDX_GAME_SOURCES}
+)
+
+file(GLOB SM64COOPNET_COMMON_SOURCES CONFIGURE_DEPENDS
+    "${SM64COOPNET_SOURCE_ROOT}/common/*.cpp"
+)
+target_sources(${PROJECT_NAME} PRIVATE ${SM64COOPNET_COMMON_SOURCES})
+
+set_source_files_properties("${SM64COOPDX_ROOT}/src/pc/pc_main.c" PROPERTIES
+    COMPILE_OPTIONS "/Dmain=sm64coopdx_main"
+    LANGUAGE C
+)
+set_source_files_properties("${SM64COOPDX_ROOT}/src/pc/mods/mod_fs.cpp" PROPERTIES
+    COMPILE_OPTIONS "/FI${CMAKE_CURRENT_LIST_DIR}/uwp/compat/strings.h"
+)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "${UWP_DEP_LIB}/SDL2.lib"
@@ -360,17 +354,12 @@ foreach(_runtime IN ITEMS
     SDL2.dll
     opengl32.dll
     libgallium_wgl.dll
+    libglapi.dll
     z-1.dll
     dxil.dll
 )
     sm64coopdx_deploy_file("${UWP_DEP_BIN}/${_runtime}" ".")
 endforeach()
-
-if(EXISTS "${UWP_DEP_BIN}/libglapi.dll")
-    sm64coopdx_deploy_file("${UWP_DEP_BIN}/libglapi.dll" ".")
-else()
-    sm64coopdx_deploy_file("${SM64COOPDX_MESA_DLL_FALLBACK_DIR}/libglapi.dll" ".")
-endif()
 
 sm64coopdx_deploy_file("${CMAKE_CURRENT_LIST_DIR}/uwp/Package.appxmanifest" ".")
 

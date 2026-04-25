@@ -1,0 +1,50 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 14,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "uwp-base",
+      "displayName": "UWP Base",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "WindowsStore",
+        "CMAKE_SYSTEM_VERSION": "10.0.19041.0"
+      }
+    },
+    {
+      "name": "uwp-debug",
+      "displayName": "UWP Debug",
+      "inherits": "uwp-base"
+    },
+    {
+      "name": "uwp-release",
+      "displayName": "UWP Release",
+      "inherits": "uwp-base"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "uwp-debug",
+      "displayName": "Build UWP Debug",
+      "configurePreset": "uwp-debug",
+      "configuration": "Debug",
+      "targets": [ "sm64coopdx-uwp" ]
+    },
+    {
+      "name": "uwp-release",
+      "displayName": "Build UWP Release",
+      "configurePreset": "uwp-release",
+      "configuration": "Release",
+      "targets": [ "sm64coopdx-uwp" ]
+    }
+  ]
+}

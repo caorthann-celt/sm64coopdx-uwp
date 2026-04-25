@@ -68,6 +68,65 @@ static f32 djui_cursor_base_distance(struct DjuiBase* base, f32 xScale, f32 ySca
     return sqrtf((x * x) * xScale + (y * y) * yScale);
 }
 
+#if defined(UWP_BUILD)
+static struct DjuiBase* djui_cursor_first_interactable(struct DjuiBase* base) {
+    if (!base->visible) { return NULL; }
+    if (base->interactable != NULL && base->interactable->enabled) { return base; }
+
+    struct DjuiBaseChild* child = base->child;
+    while (child != NULL) {
+        struct DjuiBase* pick = djui_cursor_first_interactable(child->base);
+        if (pick != NULL) { return pick; }
+        child = child->next;
+    }
+
+    return NULL;
+}
+
+static void djui_cursor_vertical_pick_check(struct DjuiBase* base, f32 originX, f32 originY, s8 yDir,
+                                            struct DjuiBase** pick, f32* bestYDist, f32* bestXDist) {
+    if (!base->visible) { return; }
+
+    if (base->interactable != NULL && base->interactable->enabled) {
+        f32 x, y;
+        djui_cursor_base_hover_location(base, &x, &y);
+
+        f32 yDist = (yDir > 0) ? (y - originY) : (originY - y);
+        if (yDist > 1.0f) {
+            f32 xDist = fabsf(x - originX);
+            if (*pick == NULL || yDist < *bestYDist || (yDist == *bestYDist && xDist < *bestXDist)) {
+                *pick = base;
+                *bestYDist = yDist;
+                *bestXDist = xDist;
+            }
+        }
+    }
+
+    struct DjuiBaseChild* child = base->child;
+    while (child != NULL) {
+        djui_cursor_vertical_pick_check(child->base, originX, originY, yDir, pick, bestYDist, bestXDist);
+        child = child->next;
+    }
+}
+
+static struct DjuiBase* djui_cursor_ordered_vertical_pick(s8 yDir) {
+    struct DjuiBase* current = (sInputControlledBase != NULL) ? sInputControlledBase : gDjuiHovered;
+
+    if (current == NULL) {
+        return djui_cursor_first_interactable(&gDjuiRoot->base);
+    }
+
+    f32 originX, originY;
+    djui_cursor_base_hover_location(current, &originX, &originY);
+
+    struct DjuiBase* pick = NULL;
+    f32 bestYDist = 0;
+    f32 bestXDist = 0;
+    djui_cursor_vertical_pick_check(&gDjuiRoot->base, originX, originY, yDir, &pick, &bestYDist, &bestXDist);
+    return pick;
+}
+#endif
+
 static void djui_cursor_move_check(s8 xDir, s8 yDir, struct DjuiBase** pick, struct DjuiBase* base) {
     if (!base->visible) { return; }
 
@@ -79,6 +138,11 @@ static void djui_cursor_move_check(s8 xDir, s8 yDir, struct DjuiBase** pick, str
         y2 = base->elem.y + base->elem.height;
         bool xWithin = (gCursorX >= x1 && gCursorX <= x2) || sCursorMouseControlled;
         bool yWithin = (gCursorY >= y1 && gCursorY <= y2) || sCursorMouseControlled;
+#if defined(UWP_BUILD)
+        if (yDir != 0 && !sCursorMouseControlled) {
+            xWithin = true;
+        }
+#endif
 
         bool valid = false;
         if (yDir > 0 && gCursorY < y1 && xWithin) { valid = true; }
@@ -109,6 +173,16 @@ static void djui_cursor_move_check(s8 xDir, s8 yDir, struct DjuiBase** pick, str
 
 void djui_cursor_move(s8 xDir, s8 yDir) {
     if (xDir == 0 && yDir == 0) { return; }
+
+#if defined(UWP_BUILD)
+    if (xDir == 0 && yDir != 0 && !sCursorMouseControlled) {
+        struct DjuiBase* pick = djui_cursor_ordered_vertical_pick(yDir);
+        if (pick != NULL) {
+            djui_cursor_input_controlled_center(pick);
+        }
+        return;
+    }
+#endif
 
     struct DjuiBase* pick = NULL;
     djui_cursor_move_check(xDir, yDir, &pick, &gDjuiRoot->base);

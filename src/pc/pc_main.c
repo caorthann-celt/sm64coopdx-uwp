@@ -130,6 +130,15 @@ extern void thread5_game_loop(void *arg);
 extern void create_next_audio_buffer(s16 *samples, u32 num_samples);
 void game_loop_one_iteration(void);
 
+#if defined(UWP_BUILD)
+static void seed_active_storage_progress(const char *name, unsigned int done, unsigned int total) {
+    LOADING_SCREEN_MUTEX(
+        snprintf(gCurrLoadingSegment.str, sizeof(gCurrLoadingSegment.str), "Preparing bundled content\n\\#808080\\%s", name);
+        gCurrLoadingSegment.percentage = total == 0 ? 0.f : (f32)done / (f32)total;
+    );
+}
+#endif
+
 void dispatch_audio_sptask(UNUSED struct SPTask *spTask) {}
 void set_vblank_handler(UNUSED s32 index, UNUSED struct VblankHandler *handler, UNUSED OSMesgQueue *queue, UNUSED OSMesg *msg) {}
 
@@ -455,6 +464,14 @@ void* main_game_init(UNUSED void* dummy) {
     // load language
     if (!djui_language_init(configLanguage)) { snprintf(configLanguage, MAX_CONFIG_STRING, "%s", ""); }
 
+#if defined(UWP_BUILD)
+    LOADING_SCREEN_MUTEX(
+        loading_screen_reset_progress_bar();
+        loading_screen_set_segment_text("Preparing bundled content");
+    );
+    sys_seed_active_storage(seed_active_storage_progress);
+#endif
+
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading"));
     dynos_gfx_init();
     enable_queued_dynos_packs();
@@ -477,7 +494,6 @@ void* main_game_init(UNUSED void* dummy) {
 
     audio_init();
     sound_init();
-    sys_seed_active_storage_async();
     network_player_init();
     mumble_init();
 
