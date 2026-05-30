@@ -206,6 +206,11 @@ bool sys_windows_short_path_from_mbs(char *destPath, size_t destSize, const char
     return false;
 }
 
+static bool sys_windows_utf8_path_from_wcs(char *destPath, size_t destSize, const wchar_t *wcsPath)
+{
+    return (WideCharToMultiByte(CP_UTF8, 0, wcsPath, (-1), destPath, destSize, NULL, NULL) > 0);
+}
+
 const char *sys_user_path(void)
 {
     static char shortPath[SYS_MAX_PATH] = { 0 };
@@ -269,6 +274,11 @@ const char *sys_exe_path_dir(void)
     if ('\0' != path[0]) { return path; }
 
     const char *exeFilepath = sys_exe_path_file();
+    if (exeFilepath == NULL || exeFilepath[0] == '\0') {
+        LOG_ERROR("unable to retrieve executable directory.");
+        return path;
+    }
+
     char *lastSeparator = strrchr(exeFilepath, '\\');
     if (lastSeparator != NULL) {
         size_t count = (size_t)(lastSeparator - exeFilepath);
@@ -289,7 +299,17 @@ const char *sys_exe_path_file(void)
         return shortPath;
     }
 
-    return sys_windows_short_path_from_wcs(shortPath, SYS_MAX_PATH, widePath) ? shortPath : NULL;
+    if (sys_windows_short_path_from_wcs(shortPath, SYS_MAX_PATH, widePath)) {
+        return shortPath;
+    }
+
+    // MSIX install folders don't expose 8.3 short paths, so use the normal path instead.
+    if (sys_windows_utf8_path_from_wcs(shortPath, SYS_MAX_PATH, widePath)) {
+        return shortPath;
+    }
+
+    LOG_ERROR("unable to convert executable path.");
+    return shortPath;
 }
 
 static void sys_fatal_impl(const char *msg) {
