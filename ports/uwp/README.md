@@ -102,8 +102,6 @@ dynos\packs
 sav
 ```
 
-Temporary mod/cache work stays in LocalState even when the active root is on `E:`. That keeps USB/external-drive writes from making downloads and cache work feel crunchy.
-
 ## Runtime Dependencies
 
 The UWP runtime bundle lives in:
