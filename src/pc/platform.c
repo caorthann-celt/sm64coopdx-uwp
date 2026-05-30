@@ -9,6 +9,9 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <shlwapi.h>
+#if defined(UWP_BUILD)
+#include "uwp_storage_root.h"
+#endif
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #else
@@ -208,6 +211,9 @@ const char *sys_user_path(void)
     static char shortPath[SYS_MAX_PATH] = { 0 };
     if ('\0' != shortPath[0]) { return shortPath; }
 
+#if defined(UWP_BUILD)
+    return uwp_storage_get_user_path(shortPath, sizeof(shortPath)) ? shortPath : NULL;
+#else
     WCHAR widePath[SYS_MAX_PATH];
 
     // "%USERPROFILE%\AppData\Roaming"
@@ -250,6 +256,7 @@ const char *sys_user_path(void)
     }
 
     return sys_windows_short_path_from_wcs(shortPath, SYS_MAX_PATH, widePath) ? shortPath : NULL;
+#endif
 }
 
 const char *sys_resource_path(void) {

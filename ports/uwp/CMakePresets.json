@@ -1,0 +1,93 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 14,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "uwp-game-dll-release",
+      "displayName": "UWP Game DLL Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-game-dll",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "WindowsStore",
+        "CMAKE_SYSTEM_VERSION": "10.0.19041.0",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_BUILD_TYPE": "Release",
+        "SM64COOPDX_BUILD_GAME_DLL": "ON",
+        "SM64COOPDX_PACKAGE_ONLY": "OFF"
+      }
+    },
+    {
+      "name": "uwp-game-dll-debug",
+      "displayName": "UWP Game DLL Debug",
+      "inherits": "uwp-game-dll-release",
+      "binaryDir": "${sourceDir}/build-game-dll-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "uwp-package-base",
+      "displayName": "UWP Package Base",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build-package",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "WindowsStore",
+        "CMAKE_SYSTEM_VERSION": "10.0.19041.0",
+        "SM64COOPDX_PACKAGE_ONLY": "ON",
+        "SM64COOPDX_BUILD_GAME_DLL": "OFF",
+        "SM64COOPDX_GAME_DLL_DIR": "${sourceDir}/build-game-dll"
+      }
+    },
+    {
+      "name": "uwp-package-debug",
+      "displayName": "UWP Package Debug",
+      "inherits": "uwp-package-base",
+      "binaryDir": "${sourceDir}/build-package-debug",
+      "cacheVariables": {
+        "SM64COOPDX_GAME_DLL_DIR": "${sourceDir}/build-game-dll-debug"
+      }
+    },
+    {
+      "name": "uwp-package-release",
+      "displayName": "UWP Package Release",
+      "inherits": "uwp-package-base"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "uwp-game-dll-release",
+      "displayName": "Build UWP Game DLL Release",
+      "configurePreset": "uwp-game-dll-release",
+      "targets": [ "sm64coopdx_game" ]
+    },
+    {
+      "name": "uwp-game-dll-debug",
+      "displayName": "Build UWP Game DLL Debug",
+      "configurePreset": "uwp-game-dll-debug",
+      "targets": [ "sm64coopdx_game" ]
+    },
+    {
+      "name": "uwp-package-release",
+      "displayName": "Build UWP Package Release",
+      "configurePreset": "uwp-package-release",
+      "configuration": "Release",
+      "targets": [ "sm64coopdx-uwp" ]
+    },
+    {
+      "name": "uwp-package-debug",
+      "displayName": "Build UWP Package Debug",
+      "configurePreset": "uwp-package-debug",
+      "configuration": "Debug",
+      "targets": [ "sm64coopdx-uwp" ]
+    }
+  ]
+}

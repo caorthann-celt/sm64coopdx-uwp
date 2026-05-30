@@ -1,0 +1,22 @@
+/build/
+/build-real/
+/build-*/
+/.vs/
+*.user
+*.VC.db
+*.opendb
+*.pdb
+*.ilk
+*.exe
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxsym
+*.log
+build-vs-components.json
+
+# These are small vendored UWP import/static libs required by a clean clone.
+!third_party/uwp-deps/x64/lib/*.lib
+!third_party/vcpkg-deps/lib/*.lib
+!third_party/vcpkg-deps/debug/lib/*.lib

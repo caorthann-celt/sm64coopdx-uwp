@@ -206,6 +206,12 @@ static void create_render_target_views(bool is_resize) {
 }
 
 static void gfx_d3d11_init(void) {
+#if defined(UWP_BUILD)
+    d3d.d3d11_module = nullptr;
+    d3d.D3D11CreateDevice = &::D3D11CreateDevice;
+    d3d.d3dcompiler_module = nullptr;
+    d3d.D3DCompile = &::D3DCompile;
+#else
     // Load d3d11.dll
     d3d.d3d11_module = LoadLibraryW(L"d3d11.dll");
     if (d3d.d3d11_module == nullptr) {
@@ -224,6 +230,7 @@ static void gfx_d3d11_init(void) {
     d3d.D3DCompile = (pD3DCompile)GetProcAddress(d3d.d3dcompiler_module, "D3DCompile");
 
     // Create D3D11 device
+#endif
 
     gfx_dxgi_create_factory_and_device(DEBUG_D3D, 11, [](IDXGIAdapter1 *adapter, bool test_only) {
 #if DEBUG_D3D
@@ -371,14 +378,14 @@ static struct ShaderProgram *gfx_d3d11_create_and_load_new_shader(struct ColorCo
     HRESULT hr = d3d.D3DCompile(buf, len, nullptr, nullptr, nullptr, "VSMain", "vs_4_0", compile_flags, 0, vs.GetAddressOf(), error_blob.GetAddressOf());
 
     if (FAILED(hr)) {
-        MessageBox(gfx_dxgi_get_h_wnd(), (char *) error_blob->GetBufferPointer(), "Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(gfx_dxgi_get_h_wnd(), (char *) error_blob->GetBufferPointer(), "Error", MB_OK | MB_ICONERROR);
         throw hr;
     }
 
     hr = d3d.D3DCompile(buf, len, nullptr, nullptr, nullptr, "PSMain", "ps_4_0", compile_flags, 0, ps.GetAddressOf(), error_blob.GetAddressOf());
 
     if (FAILED(hr)) {
-        MessageBox(gfx_dxgi_get_h_wnd(), (char *) error_blob->GetBufferPointer(), "Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(gfx_dxgi_get_h_wnd(), (char *) error_blob->GetBufferPointer(), "Error", MB_OK | MB_ICONERROR);
         throw hr;
     }
 
@@ -767,7 +774,7 @@ static void gfx_d3d11_finish_render(void) {
 
 } // namespace
 
-struct GfxRenderingAPI gfx_direct3d11_api = {
+extern "C" struct GfxRenderingAPI gfx_direct3d11_api = {
     gfx_d3d11_z_is_from_0_to_1,
     gfx_d3d11_unload_shader,
     gfx_d3d11_load_shader,

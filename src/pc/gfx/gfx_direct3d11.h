@@ -5,7 +5,13 @@
 
 #include "gfx_rendering_api.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern struct GfxRenderingAPI gfx_direct3d11_api;
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

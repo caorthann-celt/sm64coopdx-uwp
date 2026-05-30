@@ -12,6 +12,9 @@
 #ifdef DISCORD_SDK
 #include "pc/discord/discord.h"
 #endif
+#ifdef UWP_BUILD
+#include "uwp_coopnet_identity.h"
+#endif
 
 #ifdef COOPNET
 
@@ -292,6 +295,13 @@ static CoopNetRc coopnet_initialize(void) {
 
     char* endptr = NULL;
     uint64_t destId = strtoull(configDestId, &endptr, 10);
+
+#ifdef UWP_BUILD
+    if (uwp_coopnet_refresh_dest_id_if_needed(&destId)) {
+        snprintf(configDestId, MAX_CONFIG_STRING, "%" PRIu64, destId);
+        configfile_save(configfile_name());
+    }
+#endif
 
     CoopNetRc rc = coopnet_begin(configCoopNetIp, configCoopNetPort, configPlayerName, destId);
     if (rc == COOPNET_FAILED) {

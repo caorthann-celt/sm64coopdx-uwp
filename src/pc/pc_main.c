@@ -206,6 +206,7 @@ static u32 get_display_refresh_rate(void) {
         } else {
             refreshRate = 60;
         }
+        if (!refreshRate) { refreshRate = 60; }
     }
     return refreshRate;
 }
@@ -221,7 +222,7 @@ static void select_graphics_backend(void) {
         return;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
     if (configGraphicsBackend == GAPI_GL && !gfx_sdl_check_opengl_compatibility()) {
         configGraphicsBackend = GAPI_D3D11;
     }
@@ -504,7 +505,7 @@ int main(int argc, char *argv[]) {
     // handle terminal arguments
     if (!parse_cli_opts(argc, argv)) { return 0; }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UWP_BUILD)
     // handle Windows console
     if (gCLIOpts.console || gCLIOpts.headless) {
         SetConsoleOutputCP(CP_UTF8);

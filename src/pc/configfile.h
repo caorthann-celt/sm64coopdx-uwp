@@ -51,6 +51,10 @@ enum GraphicsBackend {
     GAPI_MAX
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern char configSaveNames[4][MAX_SAVE_NAME_STRING];
 
 // display settings
@@ -194,5 +198,9 @@ void configfile_load(void);
 void configfile_save(const char *filename);
 const char *configfile_name(void);
 const char *configfile_backup_name(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // CONFIGFILE_H

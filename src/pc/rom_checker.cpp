@@ -19,8 +19,8 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
-bool gRomIsValid = false;
-char gRomFilename[SYS_MAX_PATH] = "";
+extern "C" bool gRomIsValid = false;
+extern "C" char gRomFilename[SYS_MAX_PATH] = "";
 
 struct VanillaMD5 {
     const char *localizationName;

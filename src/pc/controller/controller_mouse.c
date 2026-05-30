@@ -5,7 +5,7 @@
 
 #include <SDL2/SDL.h>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 extern HWND gfx_dxgi_get_h_wnd(void);
@@ -30,7 +30,7 @@ f32 mouse_scroll_y;
 
 bool mouse_relative_enabled;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
 u32 mouse_relative_buttons_held_on_focus;
 u32 mouse_window_buttons_held_on_focus;
 bool mouse_dxgi_prev_focus;
@@ -66,7 +66,7 @@ static u32 controller_mouse_dxgi_button_state(u32* mouse_held, bool has_focus) {
 void controller_mouse_read_window(void) {
     if (!mouse_init_ok) { return; }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
     if (gWindowApi == &gfx_dxgi) {
         HWND game_window = gfx_dxgi_get_h_wnd();
 
@@ -102,7 +102,7 @@ void controller_mouse_read_window(void) {
 void controller_mouse_read_relative(void) {
     if (!mouse_init_ok) { return; }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
     if (gWindowApi == &gfx_dxgi) {
         HWND game_window = gfx_dxgi_get_h_wnd();
 
@@ -145,7 +145,7 @@ void controller_mouse_enter_relative(void) {
     if (!mouse_relative_enabled) {
         mouse_relative_enabled = true;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
         if (gWindowApi == &gfx_dxgi) {
             CURSORINFO ci;
             ci.cbSize = sizeof(CURSORINFO);
@@ -169,7 +169,7 @@ void controller_mouse_leave_relative(void) {
     if (mouse_relative_enabled) {
         mouse_relative_enabled = false;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
         if (gWindowApi == &gfx_dxgi) {
             ShowCursor(mouse_relative_prev_cursor_state);
         } else {

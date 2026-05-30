@@ -1,4 +1,4 @@
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(_WIN32)
 #define FOR_WINDOWS 1
 #else
 #define FOR_WINDOWS 0
@@ -6,7 +6,7 @@
 
 #include <SDL2/SDL.h>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
 #include <windows.h>
 #endif
 
@@ -42,6 +42,10 @@
 #include "pc/utils/misc.h"
 #include "pc/mods/mod_import.h"
 #include "pc/rom_checker.h"
+
+#if defined(UWP_BUILD)
+#include "uwp_display_size.h"
+#endif
 
 #ifndef GL_MAX_SAMPLES
 #define GL_MAX_SAMPLES 0x8D57
@@ -111,7 +115,7 @@ static void gfx_sdl_reset_dimension_and_pos(void) {
 }
 
 static void gfx_sdl_init(const char *window_title) {
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(UWP_BUILD)
     SetProcessDPIAware();
 #endif
 
@@ -137,6 +141,15 @@ static void gfx_sdl_init(const char *window_title) {
 
     int xpos = (configWindow.x == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.x;
     int ypos = (configWindow.y == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.y;
+
+#if defined(UWP_BUILD)
+    int render_w = 0;
+    int render_h = 0;
+    if (sm64coopdx_uwp_get_render_size(&render_w, &render_h)) {
+        configWindow.w = render_w;
+        configWindow.h = render_h;
+    }
+#endif
 
     wnd = SDL_CreateWindow(
         window_title,
@@ -195,6 +208,13 @@ static void gfx_sdl_main_loop(void (*run_one_game_iter)(void)) {
 
 static void gfx_sdl_get_dimensions(uint32_t *width, uint32_t *height) {
     int w, h;
+#if defined(UWP_BUILD)
+    if (sm64coopdx_uwp_get_render_size(&w, &h)) {
+        if (width) *width = w;
+        if (height) *height = h;
+        return;
+    }
+#endif
     SDL_GetWindowSize(wnd, &w, &h);
     if (width) *width = w;
     if (height) *height = h;

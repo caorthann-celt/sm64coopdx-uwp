@@ -198,8 +198,6 @@ static void djui_panel_rebuild_mods_list(UNUSED struct DjuiBase* caller) {
 static void* threaded_mod_refresh(UNUSED void* unused) {
     mods_refresh_local();
 
-    if (gModRefreshThread.state == RUNNING) { join_thread(&gModRefreshThread); }
-
     mods_update_selectable();
     djui_panel_host_mods_add_mods(&sModLayout->base);
     djui_paginated_calculate_height(sModPaginated);
@@ -208,6 +206,8 @@ static void* threaded_mod_refresh(UNUSED void* unused) {
     djui_base_set_enabled(&sRefreshButton->base, true);
     djui_base_set_enabled(&sBackButton->base, true);
     gDjuiPanelDisableBack = false;
+    // Do not join this thread from itself, or UWP can get stuck in the refresh panel.
+    gModRefreshThread.state = STOPPED;
 
     return NULL;
 }

@@ -73,7 +73,11 @@ ConfigWindow configWindow = {
     .h = DESIRED_SCREEN_HEIGHT,
     .vsync = 1,
     .reset = false,
+#if defined(UWP_BUILD)
+    .fullscreen = true,
+#else
     .fullscreen = false,
+#endif
     .exiting_fullscreen = false,
     .settings_changed = false,
     .msaa = 0,
@@ -82,7 +86,12 @@ ConfigWindow configWindow = {
 ConfigStick configStick = { 0 };
 
 // display settings
-enum GraphicsBackend configGraphicsBackend        = GAPI_GL;
+enum GraphicsBackend configGraphicsBackend        =
+#if defined(UWP_BUILD) && defined(_WIN32)
+                                                   GAPI_D3D11;
+#else
+                                                   GAPI_GL;
+#endif
 unsigned int configFiltering                      = 2; // 0 = Nearest, 1 = Bilinear, 2 = Trilinear
 bool         configShowFPS                        = false;
 bool         configShowPing                       = false;
@@ -659,6 +668,52 @@ const char *configfile_backup_name(void) {
     return CONFIGFILE_BACKUP;
 }
 
+static void configfile_finalize(void) {
+    if (configGraphicsBackend < GAPI_GL || configGraphicsBackend > GAPI_MAX) { configGraphicsBackend = GAPI_GL; }
+
+    if (configFramerateMode < 0 || configFramerateMode > RRM_MAX) { configFramerateMode = 0; }
+    if (configFrameLimit < 30)   { configFrameLimit = 30; }
+    if (configFrameLimit > 3000) { configFrameLimit = 3000; }
+
+    gMasterVolume = (f32)configMasterVolume / 127.0f;
+
+    if (configPlayerModel >= CT_MAX) { configPlayerModel = 0; }
+
+    if (configDjuiTheme >= DJUI_THEME_MAX) { configDjuiTheme = 0; }
+    if (configDjuiScale >= 5) { configDjuiScale = 0; }
+
+    if (gCLIOpts.fullscreen == 1) {
+        configWindow.fullscreen = true;
+    } else if (gCLIOpts.fullscreen == 2) {
+        configWindow.fullscreen = false;
+    }
+    if (gCLIOpts.width != 0) { configWindow.w = gCLIOpts.width; }
+    if (gCLIOpts.height != 0) { configWindow.h = gCLIOpts.height; }
+
+    if (gCLIOpts.playerName[0]) { snprintf(configPlayerName, MAX_CONFIG_STRING, "%s", gCLIOpts.playerName); }
+
+    if (!network_player_name_valid(configPlayerName)) {
+        snprintf(configPlayerName, MAX_CONFIG_STRING, "Player");
+    }
+
+    for (int i = 0; i < gCLIOpts.enabledModsCount; i++) {
+        enable_mod(gCLIOpts.enableMods[i]);
+    }
+    free(gCLIOpts.enableMods);
+
+    if (gCLIOpts.playerCount != 0) {
+        configAmountOfPlayers = MIN(gCLIOpts.playerCount, MAX_PLAYERS);
+    }
+
+#if defined(UWP_BUILD)
+    configWindow.fullscreen = true;
+#endif
+
+#ifndef COOPNET
+    configNetworkSystem = NS_SOCKET;
+#endif
+}
+
 // Loads the config file specified by 'filename'
 static void configfile_load_internal(const char *filename, bool* error) {
     fs_file_t *file;
@@ -675,6 +730,7 @@ static void configfile_load_internal(const char *filename, bool* error) {
         // Create a new config file and save defaults
         printf("Config file '%s' not found. Creating it.\n", filename);
         configfile_save(filename);
+        configfile_finalize();
         return;
     }
 
@@ -785,46 +841,7 @@ NEXT_OPTION:
     }
 
     fs_close(file);
-
-    if (configGraphicsBackend < GAPI_GL || configGraphicsBackend > GAPI_MAX) { configGraphicsBackend = GAPI_GL; }
-
-    if (configFramerateMode < 0 || configFramerateMode > RRM_MAX) { configFramerateMode = 0; }
-    if (configFrameLimit < 30)   { configFrameLimit = 30; }
-    if (configFrameLimit > 3000) { configFrameLimit = 3000; }
-
-    gMasterVolume = (f32)configMasterVolume / 127.0f;
-
-    if (configPlayerModel >= CT_MAX) { configPlayerModel = 0; }
-
-    if (configDjuiTheme >= DJUI_THEME_MAX) { configDjuiTheme = 0; }
-    if (configDjuiScale >= 5) { configDjuiScale = 0; }
-
-    if (gCLIOpts.fullscreen == 1) {
-        configWindow.fullscreen = true;
-    } else if (gCLIOpts.fullscreen == 2) {
-        configWindow.fullscreen = false;
-    }
-    if (gCLIOpts.width != 0) { configWindow.w = gCLIOpts.width; }
-    if (gCLIOpts.height != 0) { configWindow.h = gCLIOpts.height; }
-
-    if (gCLIOpts.playerName[0]) { snprintf(configPlayerName, MAX_CONFIG_STRING, "%s", gCLIOpts.playerName); }
-
-    if (!network_player_name_valid(configPlayerName)) {
-        snprintf(configPlayerName, MAX_CONFIG_STRING, "Player");
-    }
-
-    for (int i = 0; i < gCLIOpts.enabledModsCount; i++) {
-        enable_mod(gCLIOpts.enableMods[i]);
-    }
-    free(gCLIOpts.enableMods);
-
-    if (gCLIOpts.playerCount != 0) {
-        configAmountOfPlayers = MIN(gCLIOpts.playerCount, MAX_PLAYERS);
-    }
-
-#ifndef COOPNET
-    configNetworkSystem = NS_SOCKET;
-#endif
+    configfile_finalize();
 }
 
 void configfile_load(void) {
