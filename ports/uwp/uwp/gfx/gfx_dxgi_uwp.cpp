@@ -51,11 +51,13 @@ static void gfx_dxgi_init(UNUSED const char *window_title) {
     gfx_dxgi_refresh_dimensions();
 }
 
-static void gfx_dxgi_set_keyboard_callbacks(UNUSED bool (*on_key_down)(int scancode), UNUSED bool (*on_key_up)(int scancode), UNUSED void (*on_all_keys_up)(void),
-                                            UNUSED void (*on_text_input)(char*), UNUSED void (*on_text_editing)(char*, int)) {
+static void gfx_dxgi_set_keyboard_callbacks(bool (*on_key_down)(int scancode), bool (*on_key_up)(int scancode), void (*on_all_keys_up)(void),
+                                            void (*on_text_input)(char*), void (*on_text_editing)(char*, int)) {
+    uwp_input_set_keyboard_callbacks(on_key_down, on_key_up, on_all_keys_up, on_text_input, on_text_editing);
 }
 
-static void gfx_dxgi_set_scroll_callback(UNUSED void (*on_scroll)(float, float)) {
+static void gfx_dxgi_set_scroll_callback(void (*on_scroll)(float, float)) {
+    uwp_input_set_scroll_callback(on_scroll);
 }
 
 static void gfx_dxgi_main_loop(void (*run_one_game_iter)(void)) {
@@ -73,12 +75,7 @@ static void gfx_dxgi_handle_events(void) {
     } catch (...) {
     }
 
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            game_exit();
-        }
-    }
+    uwp_input_pump_sdl_events(game_exit);
 }
 
 static bool gfx_dxgi_start_frame(void) {
