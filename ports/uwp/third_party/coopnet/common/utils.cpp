@@ -112,7 +112,7 @@ std::size_t hashFile(const std::string &filepath = getExecutablePath()) {
 #ifdef UWP_BUILD
     // Public CoopNet is strict: no official Windows OpenGL hash, no LOBBY_JOINED.
     // UWP hashes differently, so spoof the captured desktop hash here.
-    return 5681061749494160167ull;
+    return 11879633110928452971ull;
 #else
     const std::string data = readFileData(filepath);
     if (data == "") { return 0; }

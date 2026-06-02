@@ -55,6 +55,7 @@
 #include "src/engine/lighting_engine.h"
 #include "src/pc/network/sync_object.h"
 #include "src/audio/load.h"
+#include "src/pc/djui/djui_gfx.h"
 
 
   ///////////////
@@ -12197,6 +12198,40 @@ int smlua_func_djui_console_toggle(lua_State* L) {
     return 1;
 }
 
+int smlua_func_djui_console_is_open(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "djui_console_is_open", 0, top);
+        return 0;
+    }
+
+
+    lua_pushboolean(L, djui_console_is_open());
+
+    return 1;
+}
+
+  ////////////////
+ // djui_gfx.h //
+////////////////
+
+int smlua_func_djui_gfx_get_scale(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "djui_gfx_get_scale", 0, top);
+        return 0;
+    }
+
+
+    lua_pushnumber(L, djui_gfx_get_scale());
+
+    return 1;
+}
+
   //////////////////////
  // djui_hud_utils.h //
 //////////////////////
@@ -19004,26 +19039,6 @@ int smlua_func_check_common_landing_cancels(lua_State* L) {
     return 1;
 }
 
-int smlua_func_mario_exit_palette_editor(lua_State* L) {
-    if (L == NULL) { return 0; }
-
-    int top = lua_gettop(L);
-    if (top != 2) {
-        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "mario_exit_palette_editor", 2, top);
-        return 0;
-    }
-
-    struct MarioState* m = (struct MarioState*)smlua_to_cobject(L, 1, LOT_MARIOSTATE);
-    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "mario_exit_palette_editor"); return 0; }
-    struct Camera* c = (struct Camera*)smlua_to_cobject(L, 2, LOT_CAMERA);
-    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "mario_exit_palette_editor"); return 0; }
-
-    extern s32 mario_exit_palette_editor(struct MarioState *m, struct Camera *c);
-    lua_pushinteger(L, mario_exit_palette_editor(m, c));
-
-    return 1;
-}
-
 int smlua_func_check_common_stationary_cancels(lua_State* L) {
     if (L == NULL) { return 0; }
 
@@ -19276,6 +19291,21 @@ int smlua_func_geo_get_body_state(lua_State* L) {
 
 
     smlua_push_object(L, LOT_MARIOBODYSTATE, geo_get_body_state(), NULL);
+
+    return 1;
+}
+
+int smlua_func_geo_get_mario_object(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "geo_get_mario_object", 0, top);
+        return 0;
+    }
+
+
+    smlua_push_object(L, LOT_OBJECT, geo_get_mario_object(), NULL);
 
     return 1;
 }
@@ -31753,6 +31783,21 @@ int smlua_func_camera_set_checking_surfaces(lua_State* L) {
     return 1;
 }
 
+int smlua_func_center_free_camera(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "center_free_camera", 0, top);
+        return 0;
+    }
+
+
+    center_free_camera();
+
+    return 1;
+}
+
   /////////////////////////////
  // smlua_collision_utils.h //
 /////////////////////////////
@@ -37929,6 +37974,10 @@ void smlua_bind_functions_autogen(void) {
 
     // djui_console.h
     smlua_bind_function(L, "djui_console_toggle", smlua_func_djui_console_toggle);
+    smlua_bind_function(L, "djui_console_is_open", smlua_func_djui_console_is_open);
+
+    // djui_gfx.h
+    smlua_bind_function(L, "djui_gfx_get_scale", smlua_func_djui_gfx_get_scale);
 
     // djui_hud_utils.h
     smlua_bind_function(L, "djui_hud_get_resolution", smlua_func_djui_hud_get_resolution);
@@ -38324,7 +38373,6 @@ void smlua_bind_functions_autogen(void) {
     smlua_bind_function(L, "stopping_step", smlua_func_stopping_step);
     smlua_bind_function(L, "landing_step", smlua_func_landing_step);
     smlua_bind_function(L, "check_common_landing_cancels", smlua_func_check_common_landing_cancels);
-    smlua_bind_function(L, "mario_exit_palette_editor", smlua_func_mario_exit_palette_editor);
     smlua_bind_function(L, "check_common_stationary_cancels", smlua_func_check_common_stationary_cancels);
     smlua_bind_function(L, "mario_execute_stationary_action", smlua_func_mario_execute_stationary_action);
 
@@ -38343,6 +38391,7 @@ void smlua_bind_functions_autogen(void) {
     smlua_bind_function(L, "bhv_unlock_door_star_loop", smlua_func_bhv_unlock_door_star_loop);
     smlua_bind_function(L, "geo_get_mario_state", smlua_func_geo_get_mario_state);
     smlua_bind_function(L, "geo_get_body_state", smlua_func_geo_get_body_state);
+    smlua_bind_function(L, "geo_get_mario_object", smlua_func_geo_get_mario_object);
 
     // mario_step.h
     smlua_bind_function(L, "get_additive_y_vel_for_jumps", smlua_func_get_additive_y_vel_for_jumps);
@@ -39010,6 +39059,7 @@ void smlua_bind_functions_autogen(void) {
     smlua_bind_function(L, "camera_config_set_deceleration", smlua_func_camera_config_set_deceleration);
     smlua_bind_function(L, "camera_get_checking_surfaces", smlua_func_camera_get_checking_surfaces);
     smlua_bind_function(L, "camera_set_checking_surfaces", smlua_func_camera_set_checking_surfaces);
+    smlua_bind_function(L, "center_free_camera", smlua_func_center_free_camera);
 
     // smlua_collision_utils.h
     smlua_bind_function(L, "collision_find_floor", smlua_func_collision_find_floor);
